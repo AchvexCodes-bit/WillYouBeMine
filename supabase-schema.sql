@@ -10,6 +10,8 @@ create table if not exists public.proposals (
   message text not null default '' check (char_length(message) <= 1000),
   yes_text text not null default 'Yes, absolutely! ♥' check (char_length(yes_text) between 1 and 60),
   theme text not null default 'sweet' check (theme in ('sweet','midnight','playful')),
+  question_pages jsonb not null default '[]'::jsonb check (jsonb_typeof(question_pages) = 'array' and jsonb_array_length(question_pages) <= 3),
+  dodge_no boolean not null default false,
   status text not null default 'published' check (status in ('published','archived')),
   created_at timestamptz not null default now()
 );
@@ -60,3 +62,6 @@ create policy "Owners can read responses" on public.proposal_responses
 
 grant select, insert, delete on public.proposals to anon, authenticated;
 grant select, insert on public.proposal_responses to anon, authenticated;
+-- Safe upgrade for projects that already created the proposals table.
+alter table public.proposals add column if not exists question_pages jsonb not null default '[]'::jsonb;
+alter table public.proposals add column if not exists dodge_no boolean not null default false;
