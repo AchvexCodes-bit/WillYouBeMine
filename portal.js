@@ -460,6 +460,7 @@
       const proposal = await fetchProposal(id);
       if (!proposal) { root.innerHTML = '<div class="p-empty"><div class="icon">♡</div><h3>This proposal is not available.</h3><p>It may have been deleted or the link may be incorrect.</p></div>'; return; }
       root.innerHTML = cardMarkup(proposal);
+      const card = root.querySelector(".p-card");
       initQuestionPages(root);
       const noButton = $("#recipient-no", root);
       if (noButton && card.dataset.dodgeNo === "true") {
