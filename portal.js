@@ -234,7 +234,7 @@
       if (back) back.disabled = current === 0;
       if (next) next.hidden = current === pages.length - 1;
       if (actions) actions.hidden = current !== pages.length - 1;
-      $(".p-page-count", card).forEach(el => {
+      $$(".p-page-count", card).forEach(el => {
         el.textContent = "PAGE " + (current + 1) + " OF " + pages.length;
       });
     }
@@ -261,7 +261,7 @@
     function renderExtraPageEditors() {
       if (!pageCount || !pageEditor) return;
       const count = Math.max(0, Math.min(3, Number(pageCount.value) || 0));
-      const previous = $(".p-extra-page-editor", pageEditor).map(el => ({ question: $("[data-extra-question]", el).value, message: $("[data-extra-message]", el).value }));
+      const previous = $$(".p-extra-page-editor", pageEditor).map(el => ({ question: $("[data-extra-question]", el).value, message: $("[data-extra-message]", el).value }));
       pageEditor.innerHTML = Array.from({ length: count }, (_, index) => {
         const item = previous[index] || {};
         return '<div class="p-extra-page-editor"><h3>Extra page ' + (index + 2) + '</h3><div class="p-field"><label>Question</label><input data-extra-question maxlength="180" placeholder="What else would you like to ask?" value="' + escapeText(item.question || "") + '"></div><div class="p-field"><label>Message (optional)</label><textarea data-extra-message maxlength="500" rows="2" placeholder="Add a little context…">' + escapeText(item.message || "") + '</textarea></div></div>';
@@ -270,7 +270,7 @@
       renderDraft();
     }
     pageCount?.addEventListener("change", renderExtraPageEditors);
-    $("[data-p-theme]").forEach(btn => {
+    $$("[data-p-theme]").forEach(btn => {
       btn.setAttribute("aria-pressed", String(btn.dataset.pTheme === theme));
       btn.addEventListener("click", () => {
         theme = btn.dataset.pTheme;
@@ -299,7 +299,7 @@
         message: $("#message").value.trim().slice(0, 1000),
         yes_text: $("#yes-text").value.trim().slice(0, 60) || "Yes, absolutely! ♥",
         theme,
-        question_pages: $(".p-extra-page-editor").slice(0, 3).map(el => ({ question: $("[data-extra-question]", el).value.trim().slice(0, 180), message: $("[data-extra-message]", el).value.trim().slice(0, 500) })),
+        question_pages: $$(".p-extra-page-editor").slice(0, 3).map(el => ({ question: $("[data-extra-question]", el).value.trim().slice(0, 180), message: $("[data-extra-message]", el).value.trim().slice(0, 500) })),
         dodge_no: Boolean($("#dodge-no") && $("#dodge-no").checked)
       };
     }
