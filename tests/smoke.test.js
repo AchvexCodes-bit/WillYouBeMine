@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const vm = require("node:vm");
 
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
@@ -76,4 +77,14 @@ test("shared response flow and account-scoped database policies are defined", ()
   assert.match(sql, /enable row level security/);
   assert.match(sql, /Owners can read responses/);
   assert.match(sql, /Anyone can answer published proposals/);
+});
+
+
+test("multi-page portal JavaScript parses and preserves publishing/link and auth recovery paths", () => {
+  const portal = fs.readFileSync(path.join(root, "portal.js"), "utf8");
+  assert.doesNotThrow(() => new vm.Script(portal), "portal.js must be valid JavaScript");
+  assert.match(portal, /created-link-banner/);
+  assert.match(portal, /copy-created-link/);
+  assert.match(portal, /Could not sign out:/);
+  assert.match(portal, /This proposal is not available/);
 });
