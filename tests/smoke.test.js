@@ -92,11 +92,11 @@ test("multi-page portal JavaScript parses and preserves publishing/link and auth
 
 test("creator controls use collection selectors instead of single-element selectors", () => {
   const portal = fs.readFileSync(path.join(root, "portal.js"), "utf8");
-  assert.doesNotMatch(portal, /\$\("\[data-p-theme\]"\)\.forEach/);
-  assert.doesNotMatch(portal, /\$\("\.p-extra-page-editor", pageEditor\)\.map/);
-  assert.doesNotMatch(portal, /question_pages:\s*\$\("\.p-extra-page-editor"\)/);
-  assert.doesNotMatch(portal, /const pages = \$\("\.p-main-question-page, \.p-extra-question-page", card\)/);
-  assert.doesNotMatch(portal, /\$\("\.p-page-count", card\)\.forEach/);
+  assert.doesNotMatch(portal, /(?<!\$)\$\("\[data-p-theme\]"\)\.forEach/);
+  assert.doesNotMatch(portal, /(?<!\$)\$\("\.p-extra-page-editor", pageEditor\)\.map/);
+  assert.doesNotMatch(portal, /question_pages:\s*(?<!\$)\$\("\.p-extra-page-editor"\)/);
+  assert.doesNotMatch(portal, /const pages = (?<!\$)\$\("\.p-main-question-page, \.p-extra-question-page", card\)/);
+  assert.doesNotMatch(portal, /(?<!\$)\$\("\.p-page-count", card\)\.forEach/);
 });
 
 test("extra pages are capped, validated, persisted, and navigable in preview and recipient view", () => {
