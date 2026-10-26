@@ -96,3 +96,34 @@ img,svg,video,canvas{max-width:100%;height:auto}
 
 /* Optional multi-page questions and playful No button */
 .p-extra-pages-editor{display:grid;gap:12px}.p-extra-page-editor{display:grid;gap:12px;padding:14px;border:1px solid var(--p-line);border-radius:9px;background:#fffaf8}.p-extra-page-editor h3{margin:0;font:500 18px var(--p-serif)}.p-toggle-field .p-switch{display:flex;align-items:center;gap:10px;font-weight:500}.p-switch input{width:18px;height:18px;min-height:18px;accent-color:var(--p-rose)}.p-extra-question-page[hidden],.p-card-actions[hidden],.p-page-navigation [hidden]{display:none!important}.p-page-count{font-size:9px;letter-spacing:.13em;color:var(--p-rose-dark);margin:0 0 10px}.p-page-navigation{display:flex;justify-content:center;gap:10px;margin:12px 0}.p-page-navigation button{min-height:42px;padding:10px 16px;border-radius:6px;border:1px solid var(--p-rose);background:transparent;color:inherit;cursor:pointer}.p-page-navigation .p-page-next{background:var(--p-rose);color:white}.p-card-no{transition:transform .16s ease}
+
+/* Romantic scene: ambient hearts, glowing artwork, and page entrance motion */
+.p-card.p-romantic-scene{position:relative;isolation:isolate;overflow:hidden;animation:p-romantic-arrive .8s cubic-bezier(.2,.8,.2,1) both;box-shadow:0 28px 90px rgba(132,54,83,.14),0 3px 14px rgba(132,54,83,.06)}
+.p-card.p-romantic-scene:before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;background:radial-gradient(ellipse at 50% 18%,rgba(255,218,226,.38),transparent 47%),linear-gradient(145deg,rgba(255,255,255,.2),transparent 50%);animation:p-romantic-glow 7s ease-in-out infinite alternate}
+.p-card.p-romantic-scene>*{position:relative;z-index:1}
+.p-card-art{position:relative;isolation:isolate;overflow:hidden}
+.p-card-orb{animation:p-orb-breathe 4s ease-in-out infinite;filter:drop-shadow(0 12px 25px rgba(191,81,117,.16))}
+.p-card-heart{transform-origin:center;animation:p-heart-beat 2s ease-in-out infinite;filter:drop-shadow(0 5px 12px rgba(195,65,109,.28))}
+.p-floating-hearts{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.p-floating-piece{position:absolute;left:var(--x);bottom:-22px;font-size:var(--size);opacity:0;color:var(--p-rose,#d56b89);animation:p-heart-drift var(--duration) linear var(--delay) infinite;will-change:transform,opacity}
+.p-floating-piece:nth-child(3n){color:#c2a16b}.p-floating-piece:nth-child(4n){color:#e7a5b5}
+.p-card-question{animation:p-question-arrive .65s cubic-bezier(.16,1,.3,1) both}
+.p-card-message{animation:p-message-arrive .8s ease-out both}
+.p-question-reveal{animation:p-page-arrive .58s cubic-bezier(.16,1,.3,1) both}
+.p-page-navigation button,.p-card-actions button{transition:transform .22s ease,box-shadow .22s ease,filter .22s ease}
+.p-page-navigation button:hover,.p-card-actions button:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(166,63,101,.17);filter:saturate(1.08)}
+.p-card-yes{position:relative;overflow:hidden}
+.p-card-yes:after{content:"";position:absolute;inset:-50% auto -50% -60%;width:36%;transform:rotate(18deg);background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:p-button-shine 4.5s ease-in-out infinite}
+.p-card.p-yes-hover .p-card-yes{box-shadow:0 0 0 5px rgba(226,139,165,.13),0 12px 30px rgba(174,65,106,.2)}
+.p-card-greeting{animation:p-message-arrive .75s ease-out both}
+@keyframes p-romantic-arrive{from{opacity:0;transform:translateY(20px) scale(.985);filter:blur(5px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
+@keyframes p-romantic-glow{from{opacity:.45}to{opacity:1}}
+@keyframes p-orb-breathe{0%,100%{transform:scale(.96) rotate(-2deg)}50%{transform:scale(1.04) rotate(2deg)}}
+@keyframes p-heart-beat{0%,100%{transform:scale(1)}12%{transform:scale(1.13)}24%{transform:scale(1)}36%{transform:scale(1.08)}48%{transform:scale(1)}}
+@keyframes p-heart-drift{0%{transform:translate3d(0,0,0) rotate(0deg);opacity:0}12%{opacity:.6}80%{opacity:.48}100%{transform:translate3d(22px,-270px,0) rotate(32deg);opacity:0}}
+@keyframes p-question-arrive{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes p-message-arrive{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:translateY(0)}}
+@keyframes p-page-arrive{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes p-button-shine{0%,65%{left:-60%}100%{left:135%}}
+@media(max-width:600px){.p-card.p-romantic-scene{box-shadow:0 16px 44px rgba(132,54,83,.12)}.p-floating-piece{font-size:calc(var(--size)*.85)}}
+@media(prefers-reduced-motion:reduce){.p-card.p-romantic-scene,.p-card.p-romantic-scene:before,.p-card-orb,.p-card-heart,.p-floating-piece,.p-card-question,.p-card-message,.p-question-reveal,.p-card-yes:after,.p-card-greeting{animation:none!important;transition:none!important}.p-floating-hearts{display:none}}
