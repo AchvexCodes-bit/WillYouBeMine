@@ -11,6 +11,14 @@
     midnight: { greeting: "Under these stars,", note: "In a universe full of possibilities, I keep choosing you. ✦", no: "Let me think" },
     playful: { greeting: "Okay, so listen…", note: "This is me being brave and a tiny bit cheesy. No pressure, just heart. ♡", no: "Not today!" }
   };
+  const proposalIdeas = {
+    classic: { question: "Will you be my person?", message: "I made this little something just to ask you that. I love the way you make ordinary days feel special. ♡", yes: "Yes, absolutely! ♥", theme: "sweet" },
+    date: { question: "Will you go on a special date with me?", message: "I would love to make another memory with you. Pick a day, bring your smile, and let me plan something lovely. 🌷", yes: "It is a date! ♥", theme: "playful" },
+    relationship: { question: "Will you make this official with me?", message: "You have become someone really special to me. I want to see where this story goes, together, one little moment at a time. 💌", yes: "Let us do this! ♥", theme: "sweet" },
+    anniversary: { question: "Shall we make another beautiful memory together?", message: "Every chapter with you is one I want to remember. Here are the moments we have shared and all the ones still waiting for us. ✨", yes: "Always with you! ♥", theme: "midnight" },
+    longdistance: { question: "Even miles apart, will you keep choosing us?", message: "The distance is not always easy, but you are worth every call, every countdown, and every mile between us. One day closer to our next hug. 🌙", yes: "Always choosing us ♥", theme: "midnight" },
+    custom: { question: "", message: "", yes: "Yes, absolutely! ♥", theme: "sweet" }
+  };
   const demoKey = "wybm-demo-proposals-v1";
   const demoResponseKey = "wybm-demo-responses-v1";
   const query = new URLSearchParams(location.search);
@@ -196,6 +204,19 @@
         renderDraft();
       });
     });
+    const ideaButtons = $(".p-idea");
+    ideaButtons.forEach(button => button.addEventListener("click", () => {
+      const idea = proposalIdeas[button.dataset.idea];
+      if (!idea) return;
+      $("#question").value = idea.question;
+      $("#message").value = idea.message;
+      $("#yes-text").value = idea.yes;
+      theme = idea.theme;
+      $("[data-p-theme]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.pTheme === theme)));
+      ideaButtons.forEach(b => { b.classList.toggle("is-selected", b === button); b.setAttribute("aria-pressed", String(b === button)); });
+      renderDraft();
+      if (button.dataset.idea === "custom") $("#question").focus();
+    }));
     function draft() {
       return {
         creator_name: $("#creator-name").value.trim().slice(0, 60),
@@ -212,7 +233,10 @@
       $("#recipient-yes").disabled = true;
       $("#recipient-no").disabled = true;
     }
-    form.addEventListener("input", renderDraft);
+    form.addEventListener("input", event => {
+      if (!event.target.closest("#proposal-ideas")) ideaButtons.forEach(b => { b.classList.remove("is-selected"); b.setAttribute("aria-pressed", "false"); });
+      renderDraft();
+    });
     form.addEventListener("submit", async event => {
       event.preventDefault();
       const submit = $("#publish-button");
