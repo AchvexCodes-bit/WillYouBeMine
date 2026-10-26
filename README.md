@@ -1,56 +1,33 @@
-# WillYouBeMine 💗
+# WillYouBeMine ♥
 
-A responsive, romantic proposal-page builder starter. Pick a style, personalize the wording, preview the page, and download a standalone proposal HTML file to host or share.
+A multi-page proposal platform. One person creates and publishes a personalized proposal, the recipient opens its link on this same site and answers without creating an account, and the creator can see replies in a private dashboard.
 
-## Current features
+## Pages
 
-- Responsive landing page with animated hero, template cards, process section, and clear calls to action.
-- Three visual themes: Sweet & Soft, Midnight Magic, and Cute & Playful.
-- Proposal editor with names, question, personal message, theme, and button text.
-- Live preview and interactive Yes / No buttons.
-- Celebration effect for the YES preview.
-- Optional playful NO-button movement; a normal choice remains available.
-- Downloadable standalone proposal HTML file. The downloaded page works without the builder running.
-- Reduced-motion support, keyboard escape to close the editor, accessible labels, and mobile navigation.
-- No framework build step required for the first static version.
+- `index.html` — marketing homepage and template discovery.
+- `create.html` — creator workflow, theme selection, and live preview.
+- `proposal.html?id=<uuid>` — public recipient page with Yes/No and an optional note.
+- `dashboard.html` — creator's published pages, copy-link actions, response counts, and delete controls.
+- `inbox.html` — responses received for the creator's proposals.
+- `login.html` — account creation and sign-in.
 
-## Run locally
+## Enable real cross-device sharing
 
-Open `index.html` in a modern browser. For a local web-server workflow, run:
+The static pages work in preview mode without a backend, but browser-local preview data cannot be shared with another person or device. To enable real publishing and responses:
 
-```bash
-python -m http.server 8000
-```
+1. Create a free project at urlSupabasehttps://supabase.com.
+2. Run `supabase-schema.sql` in the Supabase SQL Editor.
+3. In Supabase Project Settings / API, copy the Project URL and public anon/publishable key.
+4. Add those two values to `config.js` as `supabaseUrl` and `supabaseAnonKey`. Never use the service-role key in client-side code.
+5. Enable email/password authentication. Set the Site URL and allowed redirect URLs to your deployed domain.
+6. Deploy the repository as a static site. Redeploy after changing `config.js`.
 
-Then visit http://localhost:8000.
+After setup, a creator signs up, publishes a proposal, and copies its unique link from the dashboard. The recipient opens the link on another device without signing in, chooses an answer, and may leave a note. The response is stored and appears in the creator's inbox. Each creator's dashboard and responses are restricted with row-level security policies.
 
-## Deploy on Vercel
+## Local development
 
-Import this repository into Vercel and deploy it as a static site. No build command is required for this plain HTML/CSS/JavaScript starter; use the repository root as the output directory if prompted.
+Use Node.js 18+ and run `npm test`. To serve the static pages locally, run `python -m http.server 8000` and visit `http://localhost:8000`.
 
-## Current limitation: public proposal links
+## Security and launch notes
 
-The editor currently downloads a standalone `my-willyoubemine-proposal.html` file. It does **not** yet create a hosted `/p/slug` URL, persist proposals across devices, or provide an account dashboard. Those features require a persistence and publishing layer (for example, a Supabase database with appropriate security rules and a server-side/API route to create and retrieve proposals). Don't put database service-role keys in client-side JavaScript.
-
-## Manual smoke-test checklist
-
-1. Open the home page and navigate to Templates.
-2. Open each template and confirm that the correct theme is selected.
-3. Edit both names, question, message, and YES button copy; verify the preview changes.
-4. Switch themes and confirm the preview colors and greeting/message change.
-5. Click YES and verify a celebration and response appear.
-6. Click NO and confirm a respectful response; try both NO-button modes.
-7. Reset the form and verify default values return.
-8. Download the standalone HTML and open it locally; check that the message and buttons work.
-9. Test the menu and builder at mobile and desktop widths.
-10. Check that Escape closes the editor and reduced-motion preferences suppress decorative animation.
-
-## Project files
-
-- `index.html` — page structure and proposal builder dialog.
-- `styles.css` — responsive visual system and animations.
-- `app.js` — editor behavior, themes, preview, standalone file export, and interactions.
-
-## Privacy note
-
-Drafts are processed in the visitor's browser and aren't sent to a server by this starter. Anyone with a downloaded proposal file can open it, so the creator should share it only with their intended recipient. A public publishing feature should include explicit consent, unpublish/delete controls, validation, rate limits, and secure database access.
+Row-level security is enabled in the supplied SQL schema. Creators can manage only their own proposals and read replies for their proposals. Public visitors can read published proposal content and submit an answer without an account. For a public launch, add rate limiting or CAPTCHA for anonymous responses and consider email verification, abuse reporting, and proposal expiry/unpublish controls. The proposal page displays only information the creator chooses to publish.
