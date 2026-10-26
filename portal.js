@@ -86,7 +86,11 @@
     $$("[data-live-mode]").forEach(el => { el.textContent = configured ? "Live publishing enabled" : "Local preview mode"; });
   }
   async function requireUser() {
-    if (!configured) return { demo: true };
+    if (!configured) {
+      const file = location.pathname.split("/").pop() || "index.html";
+      if (file !== "login.html") location.href = "login.html?setup=required&next=" + encodeURIComponent(file + location.search);
+      return null;
+    }
     await initSupabase();
     if (!currentUser) {
       location.href = "login.html?next=" + encodeURIComponent(location.pathname.split("/").pop() + location.search);
@@ -180,6 +184,8 @@
     catch (error) { notice(error.message || "Publishing service could not connect.", "error"); }
     setModeNotice();
     updateAuthLinks();
+    const userState = await requireUser();
+    if (!userState) return;
     let theme = query.get("theme") || "sweet";
     if (!themes[theme]) theme = "sweet";
     $$("[data-p-theme]").forEach(btn => {
@@ -397,6 +403,13 @@
     try { await initSupabase(); }
     catch (error) { notice(error.message || "Account service could not connect.", "error"); }
     setModeNotice();
+    if (!configured) {
+      notice("Account publishing is not enabled yet. Add your Supabase project URL and public anon/publishable key to config.js, then run supabase-schema.sql in the Supabase SQL Editor. Sign-in and cross-device sharing cannot work until this setup is complete.", "error");
+      const submit = $("#login-submit");
+      if (submit) submit.disabled = true;
+      const signupButton = $("#signup-mode");
+      if (signupButton) signupButton.disabled = true;
+    }
     const signup = $("#signup-mode");
     let mode = query.get("mode") === "signup" ? "signup" : "login";
     function setMode() {
