@@ -206,16 +206,17 @@
   function cardMarkup(p) {
     const theme = themes[p.theme] || themes.sweet;
     const greeting = p.recipient_name ? "Hey, " + p.recipient_name + "." : theme.greeting;
+    const questionPages = Array.isArray(p.question_pages) ? p.question_pages.slice(0, 3) : [];
     return '<div class="p-card" data-theme="' + escapeText(p.theme || "sweet") + '" data-dodge-no="' + (p.dodge_no ? "true" : "false") + '">' +
       '<div class="p-card-top"><span>AN IMPORTANT LITTLE QUESTION</span><span>♥</span></div>' +
       '<div class="p-card-art"><span class="p-card-orb"></span><span class="p-card-heart">♥</span></div>' +
       '<p class="p-card-greeting">' + escapeText(greeting) + '</p>' +
       '<section class="p-main-question-page" data-question-page="0">' +
-      (Array.isArray(p.question_pages) && p.question_pages.length ? '<p class="p-page-count">PAGE 1 OF ' + (p.question_pages.length + 1) + '</p>' : '') +
+      (questionPages.length ? '<p class="p-page-count">PAGE 1 OF ' + (p.question_pages.length + 1) + '</p>' : '') +
       '<h1 class="p-card-question">' + escapeText(p.question || "Will you be my person?") + '</h1><p class="p-card-message">' + escapeText(p.message || theme.note) + '</p></section>' +
-      (Array.isArray(p.question_pages) ? p.question_pages.slice(0,3).map((page,index) => '<section class="p-extra-question-page" data-question-page="' + (index+1) + '" hidden><p class="p-page-count">PAGE ' + (index+2) + ' OF ' + (p.question_pages.length+1) + '</p><h2 class="p-card-question">' + escapeText(page.question || "One more little question…") + '</h2><p class="p-card-message">' + escapeText(page.message || "") + '</p></section>').join("") : '') +
-      (Array.isArray(p.question_pages) && p.question_pages.length ? '<div class="p-page-navigation"><button type="button" class="p-page-back" disabled>← Back</button><button type="button" class="p-page-next">Next →</button></div>' : '') +
-      '<div class="p-card-actions"' + (Array.isArray(p.question_pages) && p.question_pages.length ? ' hidden' : '') + '><button class="p-card-yes" id="recipient-yes">' + escapeText(p.yes_text || "Yes, absolutely! ♥") + '</button><button class="p-card-no" id="recipient-no">' + escapeText(theme.no) + '</button></div>' +
+      (questionPages.length ? questionPages.map((page,index) => '<section class="p-extra-question-page" data-question-page="' + (index+1) + '" hidden><p class="p-page-count">PAGE ' + (index+2) + ' OF ' + (questionPages.length+1) + '</p><h2 class="p-card-question">' + escapeText(page.question || "One more little question…") + '</h2><p class="p-card-message">' + escapeText(page.message || "") + '</p></section>').join("") : '') +
+      (questionPages.length ? '<div class="p-page-navigation"><button type="button" class="p-page-back" disabled>← Back</button><button type="button" class="p-page-next">Next →</button></div>' : '') +
+      '<div class="p-card-actions"' + (questionPages.length ? ' hidden' : '') + '><button class="p-card-yes" id="recipient-yes">' + escapeText(p.yes_text || "Yes, absolutely! ♥") + '</button><button class="p-card-no" id="recipient-no">' + escapeText(theme.no) + '</button></div>' +
       '<p class="p-card-response" id="recipient-feedback" aria-live="polite"></p>' +
       '<div class="p-card-foot"><span>MADE WITH A LITTLE NERVE</span><span>♡ JUST FOR YOU</span></div></div>';
   }
@@ -570,7 +571,16 @@
           return;
         }
         const next = query.get("next");
-        location.href = next && !next.includes("://") ? next : "dashboard.html";
+        let destination = "dashboard.html";
+        if (next && !next.startsWith("/") && !next.includes("\\") && !next.includes(":")) {
+          try {
+            const target = new URL(next, location.href);
+            const page = target.pathname.split("/").pop();
+            const allowedPages = ["create.html", "dashboard.html", "inbox.html", "proposal.html", "index.html"];
+            if (target.origin === location.origin && allowedPages.includes(page)) destination = target.href;
+          } catch (_) { /* Keep the safe default destination. */ }
+        }
+        location.href = destination;
       } catch (error) { notice(error.message || "Authentication failed.", "error"); }
     });
   }
