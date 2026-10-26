@@ -210,13 +210,39 @@
       '<div class="p-card-top"><span>AN IMPORTANT LITTLE QUESTION</span><span>♥</span></div>' +
       '<div class="p-card-art"><span class="p-card-orb"></span><span class="p-card-heart">♥</span></div>' +
       '<p class="p-card-greeting">' + escapeText(greeting) + '</p>' +
-      '<section class="p-main-question-page" data-question-page="0"><h1 class="p-card-question">' + escapeText(p.question || "Will you be my person?") + '</h1><p class="p-card-message">' + escapeText(p.message || theme.note) + '</p></section>' +
+      '<section class="p-main-question-page" data-question-page="0">' +
+      (Array.isArray(p.question_pages) && p.question_pages.length ? '<p class="p-page-count">PAGE 1 OF ' + (p.question_pages.length + 1) + '</p>' : '') +
+      '<h1 class="p-card-question">' + escapeText(p.question || "Will you be my person?") + '</h1><p class="p-card-message">' + escapeText(p.message || theme.note) + '</p></section>' +
       (Array.isArray(p.question_pages) ? p.question_pages.slice(0,3).map((page,index) => '<section class="p-extra-question-page" data-question-page="' + (index+1) + '" hidden><p class="p-page-count">PAGE ' + (index+2) + ' OF ' + (p.question_pages.length+1) + '</p><h2 class="p-card-question">' + escapeText(page.question || "One more little question…") + '</h2><p class="p-card-message">' + escapeText(page.message || "") + '</p></section>').join("") : '') +
       (Array.isArray(p.question_pages) && p.question_pages.length ? '<div class="p-page-navigation"><button type="button" class="p-page-back" disabled>← Back</button><button type="button" class="p-page-next">Next →</button></div>' : '') +
       '<div class="p-card-actions"' + (Array.isArray(p.question_pages) && p.question_pages.length ? ' hidden' : '') + '><button class="p-card-yes" id="recipient-yes">' + escapeText(p.yes_text || "Yes, absolutely! ♥") + '</button><button class="p-card-no" id="recipient-no">' + escapeText(theme.no) + '</button></div>' +
       '<p class="p-card-response" id="recipient-feedback" aria-live="polite"></p>' +
       '<div class="p-card-foot"><span>MADE WITH A LITTLE NERVE</span><span>♡ JUST FOR YOU</span></div></div>';
   }
+  function initQuestionPages(root) {
+    const card = root && root.querySelector(".p-card");
+    if (!card) return;
+    const pages = $(".p-main-question-page, .p-extra-question-page", card);
+    if (pages.length <= 1) return;
+    const back = $(".p-page-back", card);
+    const next = $(".p-page-next", card);
+    const actions = $(".p-card-actions", card);
+    let current = 0;
+    function showPage(index) {
+      current = Math.max(0, Math.min(pages.length - 1, index));
+      pages.forEach((page, i) => { page.hidden = i !== current; });
+      if (back) back.disabled = current === 0;
+      if (next) next.hidden = current === pages.length - 1;
+      if (actions) actions.hidden = current !== pages.length - 1;
+      $(".p-page-count", card).forEach(el => {
+        el.textContent = "PAGE " + (current + 1) + " OF " + pages.length;
+      });
+    }
+    if (back) back.addEventListener("click", () => showPage(current - 1));
+    if (next) next.addEventListener("click", () => showPage(current + 1));
+    showPage(0);
+  }
+
   async function initCreate() {
     const form = $("#create-form");
     if (!form) return;
@@ -224,7 +250,9 @@
     catch (error) { notice(error.message || "Publishing service could not connect.", "error"); }
     setModeNotice();
     updateAuthLinks();
-    const userState = await requireUser();
+    let userState;
+    try { userState = await requireUser(); }
+    catch (error) { notice(error.message || "Could not verify your sign-in. Please refresh and try again.", "error"); return; }
     if (!userState) return;
     let theme = query.get("theme") || "sweet";
     if (!themes[theme]) theme = "sweet";
@@ -277,9 +305,11 @@
     }
     function renderDraft() {
       const d = draft();
-      $("#create-preview").innerHTML = cardMarkup({ ...d, status: "published" });
-      $("#recipient-yes").disabled = true;
-      $("#recipient-no").disabled = true;
+      const preview = $("#create-preview");
+      preview.innerHTML = cardMarkup({ ...d, status: "published" });
+      initQuestionPages(preview);
+      $("#recipient-yes", preview).disabled = true;
+      $("#recipient-no", preview).disabled = true;
     }
     form.addEventListener("input", event => {
       if (!event.target.closest("#proposal-ideas")) ideaButtons.forEach(b => { b.classList.remove("is-selected"); b.setAttribute("aria-pressed", "false"); });
@@ -288,9 +318,15 @@
     form.addEventListener("submit", async event => {
       event.preventDefault();
       const submit = $("#publish-button");
+      const payload = draft();
+      const missingPage = payload.question_pages.findIndex(page => !page.question);
+      if (missingPage !== -1) {
+        notice("Please enter a question for extra page " + (missingPage + 2) + " or reduce the number of extra pages.", "error");
+        return;
+      }
       submit.disabled = true;
       try {
-        const id = await createProposal(draft());
+        const id = await createProposal(payload);
         location.href = "dashboard.html?created=" + encodeURIComponent(id);
       } catch (error) {
         notice(error.message || "Could not publish this proposal.", "error");
@@ -412,7 +448,11 @@
   async function initProposal() {
     const root = $("#proposal-page");
     if (!root) return;
-    await initSupabase();
+    try { await initSupabase(); }
+    catch (error) {
+      root.innerHTML = '<div class="p-notice error">Could not connect to the publishing service: ' + escapeText(error.message) + '</div>';
+      return;
+    }
     setModeNotice();
     const id = query.get("id");
     if (!id) { root.innerHTML = '<div class="p-empty"><h3>This link is incomplete.</h3><p>Ask the sender to share their proposal link again.</p></div>'; return; }
@@ -420,23 +460,7 @@
       const proposal = await fetchProposal(id);
       if (!proposal) { root.innerHTML = '<div class="p-empty"><div class="icon">♡</div><h3>This proposal is not available.</h3><p>It may have been deleted or the link may be incorrect.</p></div>'; return; }
       root.innerHTML = cardMarkup(proposal);
-      const card = root.querySelector(".p-card");
-      const pages = $(".p-main-question-page, .p-extra-question-page", card);
-      if (pages.length > 1) {
-        let current = 0;
-        const back = $(".p-page-back", card), next = $(".p-page-next", card), actions = $(".p-card-actions", card);
-        const showPage = index => {
-          current = Math.max(0, Math.min(pages.length - 1, index));
-          pages.forEach((page, i) => { page.hidden = i !== current; });
-          back.disabled = current === 0;
-          next.hidden = current === pages.length - 1;
-          actions.hidden = current !== pages.length - 1;
-          $(".p-page-count", card).forEach(el => { el.textContent = "PAGE " + (current + 1) + " OF " + pages.length; });
-        };
-        back.addEventListener("click", () => showPage(current - 1));
-        next.addEventListener("click", () => showPage(current + 1));
-        showPage(0);
-      }
+      initQuestionPages(root);
       const noButton = $("#recipient-no", root);
       if (noButton && card.dataset.dodgeNo === "true") {
         let moves = 0;
@@ -477,10 +501,16 @@
   async function initInbox() {
     const root = $("#inbox-list");
     if (!root) return;
-    await initSupabase();
-    setModeNotice();
-    const userState = await requireUser();
-    if (!userState) return;
+    let userState;
+    try {
+      await initSupabase();
+      setModeNotice();
+      userState = await requireUser();
+      if (!userState) return;
+    } catch (error) {
+      root.innerHTML = '<div class="p-notice error">Could not connect to your account or load replies: ' + escapeText(error.message) + '</div>';
+      return;
+    }
     try {
       const proposals = await listMyProposals();
       const wanted = query.get("id");
