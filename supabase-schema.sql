@@ -65,3 +65,36 @@ grant select, insert on public.proposal_responses to anon, authenticated;
 -- Safe upgrade for projects that already created the proposals table.
 alter table public.proposals add column if not exists question_pages jsonb not null default '[]'::jsonb;
 alter table public.proposals add column if not exists dodge_no boolean not null default false;
+
+-- Proposal links expire 15 days after creation. Applies to existing projects too.
+-- Enable pg_cron in Supabase if it is not already available in this project.
+create extension if not exists pg_cron;
+
+drop policy if exists "Anyone can view published proposals" on public.proposals;
+create policy "Anyone can view unexpired published proposals" on public.proposals
+  for select to anon, authenticated
+  using (status = 'published' and created_at > now() - interval '15 days');
+
+drop policy if exists "Anyone can answer published proposals" on public.proposal_responses;
+create policy "Anyone can answer unexpired published proposals" on public.proposal_responses
+  for insert to anon, authenticated
+  with check (
+    answer in ('yes','no')
+    and exists (
+      select 1 from public.proposals p
+      where p.id = proposal_id
+        and p.status = 'published'
+        and p.created_at > now() - interval '15 days'
+    )
+  );
+
+-- Remove expired proposals daily; response rows are removed by ON DELETE CASCADE.
+select cron.unschedule(jobid)
+from cron.job
+where jobname = 'wybm-delete-expired-proposals';
+
+select cron.schedule(
+  'wybm-delete-expired-proposals',
+  '17 3 * * *',
+  $job$delete from public.proposals where created_at <= now() - interval '15 days';$job$
+);
