@@ -204,7 +204,7 @@
         renderDraft();
       });
     });
-    const ideaButtons = $(".p-idea");
+    const ideaButtons = $$(".p-idea");
     ideaButtons.forEach(button => button.addEventListener("click", () => {
       const idea = proposalIdeas[button.dataset.idea];
       if (!idea) return;
@@ -212,7 +212,7 @@
       $("#message").value = idea.message;
       $("#yes-text").value = idea.yes;
       theme = idea.theme;
-      $("[data-p-theme]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.pTheme === theme)));
+      $$("[data-p-theme]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.pTheme === theme)));
       ideaButtons.forEach(b => { b.classList.toggle("is-selected", b === button); b.setAttribute("aria-pressed", String(b === button)); });
       renderDraft();
       if (button.dataset.idea === "custom") $("#question").focus();
