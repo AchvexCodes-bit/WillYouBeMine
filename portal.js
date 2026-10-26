@@ -72,8 +72,8 @@
         el.href = "login.html";
       }
     });
-    $("[data-user-email]").forEach(el => { el.textContent = currentUser ? currentUser.email : (configured ? "Not signed in" : "Guest preview"); });
-    $("[data-signout], #signout-button").forEach(el => {
+    $$("[data-user-email]").forEach(el => { el.textContent = currentUser ? currentUser.email : (configured ? "Not signed in" : "Guest preview"); });
+    $$("[data-signout], #signout-button").forEach(el => {
       el.classList.toggle("p-hidden", !configured || !currentUser);
       el.disabled = !configured || !currentUser;
     });
