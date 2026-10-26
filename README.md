@@ -15,7 +15,7 @@ A multi-page proposal platform. One person creates and publishes a personalized 
 
 The static pages work in preview mode without a backend, but browser-local preview data cannot be shared with another person or device. To enable real publishing and responses:
 
-1. Create a free project at urlSupabasehttps://supabase.com.
+1. Create a free project at https://supabase.com.
 2. Run `supabase-schema.sql` in the Supabase SQL Editor.
 3. In Supabase Project Settings / API, copy the Project URL and public anon/publishable key.
 4. Add those two values to `config.js` as `supabaseUrl` and `supabaseAnonKey`. Never use the service-role key in client-side code.
