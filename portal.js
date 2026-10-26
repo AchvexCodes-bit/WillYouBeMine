@@ -220,6 +220,40 @@
       '<p class="p-card-response" id="recipient-feedback" aria-live="polite"></p>' +
       '<div class="p-card-foot"><span>MADE WITH A LITTLE NERVE</span><span>♡ JUST FOR YOU</span></div></div>';
   }
+  function initRomanticScene(root) {
+    const card = root && root.querySelector(".p-card");
+    if (!card || card.dataset.sceneReady === "true") return;
+    card.dataset.sceneReady = "true";
+    card.classList.add("p-romantic-scene");
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const art = card.querySelector(".p-card-art");
+    if (art) {
+      const layer = document.createElement("div");
+      layer.className = "p-floating-hearts";
+      layer.setAttribute("aria-hidden", "true");
+      const symbols = ["♥", "♡", "✦", "✧", "♥", "·"];
+      for (let i = 0; i < 15; i++) {
+        const piece = document.createElement("span");
+        piece.className = "p-floating-piece";
+        piece.textContent = symbols[i % symbols.length];
+        piece.style.setProperty("--x", (5 + Math.random() * 90) + "%");
+        piece.style.setProperty("--delay", (-Math.random() * 12) + "s");
+        piece.style.setProperty("--duration", (8 + Math.random() * 8) + "s");
+        piece.style.setProperty("--size", (10 + Math.random() * 15) + "px");
+        layer.appendChild(piece);
+      }
+      art.appendChild(layer);
+    }
+    const pages = $(".p-main-question-page, .p-extra-question-page", card);
+    pages.forEach((page, index) => {
+      page.classList.add("p-question-reveal");
+      page.style.setProperty("--page-delay", (index * 60) + "ms");
+    });
+    const yes = $("#recipient-yes", card);
+    if (yes) yes.addEventListener("pointerenter", () => card.classList.add("p-yes-hover"));
+    if (yes) yes.addEventListener("pointerleave", () => card.classList.remove("p-yes-hover"));
+  }
+
   function initQuestionPages(root) {
     const card = root && root.querySelector(".p-card");
     if (!card) return;
@@ -308,6 +342,7 @@
       const d = draft();
       const preview = $("#create-preview");
       preview.innerHTML = cardMarkup({ ...d, status: "published" });
+      initRomanticScene(preview);
       initQuestionPages(preview);
       $("#recipient-yes", preview).disabled = true;
       $("#recipient-no", preview).disabled = true;
@@ -461,6 +496,7 @@
       const proposal = await fetchProposal(id);
       if (!proposal) { root.innerHTML = '<div class="p-empty"><div class="icon">♡</div><h3>This proposal is not available.</h3><p>It may have been deleted or the link may be incorrect.</p></div>'; return; }
       root.innerHTML = cardMarkup(proposal);
+      initRomanticScene(root);
       const card = root.querySelector(".p-card");
       initQuestionPages(root);
       const noButton = $("#recipient-no", root);
