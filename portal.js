@@ -42,15 +42,25 @@
     catch (_) { return value; }
   }
   async function initSupabase() {
-    if (!configured || !window.supabase || !window.supabase.createClient) return null;
+    if (!configured) return null;
+    if (!window.supabase || !window.supabase.createClient) {
+      throw new Error("The publishing service could not load. Refresh the page or check the Supabase script connection.");
+    }
+    if (client) return client;
     client = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
-    const result = await client.auth.getSession();
-    currentUser = result.data && result.data.session ? result.data.session.user : null;
-    client.auth.onAuthStateChange((_event, session) => {
-      currentUser = session ? session.user : null;
-      updateAuthLinks();
-    });
-    return client;
+    try {
+      const result = await client.auth.getSession();
+      if (result.error) throw result.error;
+      currentUser = result.data && result.data.session ? result.data.session.user : null;
+      client.auth.onAuthStateChange((_event, session) => {
+        currentUser = session ? session.user : null;
+        updateAuthLinks();
+      });
+      return client;
+    } catch (error) {
+      client = null;
+      throw new Error("Could not connect to the publishing service: " + (error.message || "check your Supabase URL and public key."));
+    }
   }
   function updateAuthLinks() {
     $$("[data-auth-link]").forEach(el => {
@@ -92,6 +102,7 @@
   async function createProposal(payload) {
     if (configured) {
       if (!client) await initSupabase();
+      if (!client) throw new Error("Publishing is unavailable. Check the Supabase setup in config.js.");
       if (!currentUser) throw new Error("Please sign in before publishing.");
       const result = await client.from("proposals").insert({ ...payload, owner_id: currentUser.id, status: "published" }).select("id").single();
       if (result.error) throw result.error;
@@ -161,7 +172,8 @@
   async function initCreate() {
     const form = $("#create-form");
     if (!form) return;
-    await initSupabase();
+    try { await initSupabase(); }
+    catch (error) { notice(error.message || "Publishing service could not connect.", "error"); }
     setModeNotice();
     updateAuthLinks();
     let theme = query.get("theme") || "sweet";
