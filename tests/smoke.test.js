@@ -27,6 +27,7 @@ test("all advertised themes exist in both markup and script", () => {
   assert.match(html, /data-template="sweet"/);
   assert.match(html, /data-template="midnight"/);
   assert.match(html, /data-template="playful"/);
+  assert.match(js, /\$\$\("\.template-card"\)\.forEach/);
 });
 
 test("core proposal interactions and standalone file export are wired", () => {
