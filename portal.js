@@ -37,7 +37,20 @@
     try { return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback)); }
     catch (_) { return fallback; }
   }
-  function demoProposals() { return safeJson(demoKey, []); }
+  function demoProposals() {
+    const all = safeJson(demoKey, []);
+    const cutoff = Date.now() - 15 * 24 * 60 * 60 * 1000;
+    const active = all.filter(p => {
+      const created = Date.parse(p.created_at || 0);
+      return Number.isFinite(created) && created > cutoff;
+    });
+    if (active.length !== all.length) {
+      const expiredIds = new Set(all.filter(p => !active.includes(p)).map(p => p.id));
+      saveDemoProposals(active);
+      saveDemoResponses(safeJson(demoResponseKey, []).filter(r => !expiredIds.has(r.proposal_id)));
+    }
+    return active;
+  }
   function saveDemoProposals(list) { localStorage.setItem(demoKey, JSON.stringify(list)); }
   function demoResponses() { return safeJson(demoResponseKey, []); }
   function saveDemoResponses(list) { localStorage.setItem(demoResponseKey, JSON.stringify(list)); }
