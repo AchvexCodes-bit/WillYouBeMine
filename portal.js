@@ -210,7 +210,6 @@
       '<div class="p-card-top"><span>AN IMPORTANT LITTLE QUESTION</span><span>♥</span></div>' +
       '<div class="p-card-art"><span class="p-card-orb"></span><span class="p-card-heart">♥</span></div>' +
       '<p class="p-card-greeting">' + escapeText(greeting) + '</p>' +
-      '<h1 class="p-card-question">' + escapeText(p.question || "Will you be my person?") + '</h1>' +
       '<section class="p-main-question-page" data-question-page="0"><h1 class="p-card-question">' + escapeText(p.question || "Will you be my person?") + '</h1><p class="p-card-message">' + escapeText(p.message || theme.note) + '</p></section>' +
       (Array.isArray(p.question_pages) ? p.question_pages.slice(0,3).map((page,index) => '<section class="p-extra-question-page" data-question-page="' + (index+1) + '" hidden><p class="p-page-count">PAGE ' + (index+2) + ' OF ' + (p.question_pages.length+1) + '</p><h2 class="p-card-question">' + escapeText(page.question || "One more little question…") + '</h2><p class="p-card-message">' + escapeText(page.message || "") + '</p></section>').join("") : '') +
       (Array.isArray(p.question_pages) && p.question_pages.length ? '<div class="p-page-navigation"><button type="button" class="p-page-back" disabled>← Back</button><button type="button" class="p-page-next">Next →</button></div>' : '') +
