@@ -172,6 +172,37 @@
     saveDemoProposals(demoProposals().filter(p => p.id !== id));
     saveDemoResponses(demoResponses().filter(r => r.proposal_id !== id));
   }
+  function celebrateYes(root) {
+    if (!root) return;
+    const card = root.querySelector(".p-card");
+    if (!card) return;
+    card.classList.add("p-celebration-active");
+    const banner = document.createElement("div");
+    banner.className = "p-celebration-banner";
+    banner.setAttribute("role", "status");
+    banner.setAttribute("aria-live", "polite");
+    banner.innerHTML = '<span class="p-celebration-sparkle" aria-hidden="true">✦</span><strong>YAY! A little love is in the air! ♥</strong><span>That is a moment worth celebrating.</span>';
+    card.insertBefore(banner, card.querySelector(".p-card-top").nextSibling);
+    const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reducedMotion) return;
+    const layer = document.createElement("div");
+    layer.className = "p-celebration-layer";
+    layer.setAttribute("aria-hidden", "true");
+    const pieces = ["♥", "♡", "✦", "✧", "♥", "✿", "♡", "♥", "✦", "♡", "✧", "♥", "✿", "♡", "♥", "✦", "♡", "♥"];
+    pieces.forEach((symbol, index) => {
+      const piece = document.createElement("span");
+      piece.className = "p-celebration-piece";
+      piece.textContent = symbol;
+      piece.style.setProperty("--piece-x", (3 + Math.random() * 94) + "%");
+      piece.style.setProperty("--piece-delay", (Math.random() * 0.65) + "s");
+      piece.style.setProperty("--piece-duration", (1.8 + Math.random() * 1.4) + "s");
+      piece.style.setProperty("--piece-size", (13 + Math.random() * 17) + "px");
+      layer.appendChild(piece);
+    });
+    card.appendChild(layer);
+    window.setTimeout(() => layer.remove(), 4000);
+  }
+
   function cardMarkup(p) {
     const theme = themes[p.theme] || themes.sweet;
     const greeting = p.recipient_name ? "Hey, " + p.recipient_name + "." : theme.greeting;
@@ -381,6 +412,7 @@
         try {
           await respondToProposal(id, answer, message, name);
           feedback.textContent = answer === "yes" ? "Your answer has been sent. Thank you for sharing this moment. ♥" : "Your answer has been sent. Thank you for being honest. ♡";
+          if (answer === "yes") celebrateYes(root);
           feedback.scrollIntoView({ behavior: "smooth", block: "nearest" });
         } catch (error) {
           feedback.textContent = "We couldn't send your answer yet. " + (error.message || "Please try again.");
