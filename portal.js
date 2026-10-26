@@ -109,7 +109,7 @@
   async function fetchProposal(id) {
     if (configured) {
       if (!client) await initSupabase();
-      const result = await client.from("proposals").select("id,creator_name,recipient_name,question,message,yes_text,theme,status,created_at").eq("id", id).eq("status", "published").maybeSingle();
+      const result = await client.from("proposals").select("id,creator_name,recipient_name,question,message,yes_text,theme,status,created_at,question_pages,dodge_no").eq("id", id).eq("status", "published").maybeSingle();
       if (result.error) throw result.error;
       return result.data;
     }
@@ -206,13 +206,15 @@
   function cardMarkup(p) {
     const theme = themes[p.theme] || themes.sweet;
     const greeting = p.recipient_name ? "Hey, " + p.recipient_name + "." : theme.greeting;
-    return '<div class="p-card" data-theme="' + escapeText(p.theme || "sweet") + '">' +
+    return '<div class="p-card" data-theme="' + escapeText(p.theme || "sweet") + '" data-dodge-no="' + (p.dodge_no ? "true" : "false") + '">' +
       '<div class="p-card-top"><span>AN IMPORTANT LITTLE QUESTION</span><span>♥</span></div>' +
       '<div class="p-card-art"><span class="p-card-orb"></span><span class="p-card-heart">♥</span></div>' +
       '<p class="p-card-greeting">' + escapeText(greeting) + '</p>' +
       '<h1 class="p-card-question">' + escapeText(p.question || "Will you be my person?") + '</h1>' +
-      '<p class="p-card-message">' + escapeText(p.message || theme.note) + '</p>' +
-      '<div class="p-card-actions"><button class="p-card-yes" id="recipient-yes">' + escapeText(p.yes_text || "Yes, absolutely! ♥") + '</button><button class="p-card-no" id="recipient-no">' + escapeText(theme.no) + '</button></div>' +
+      '<section class="p-main-question-page" data-question-page="0"><h1 class="p-card-question">' + escapeText(p.question || "Will you be my person?") + '</h1><p class="p-card-message">' + escapeText(p.message || theme.note) + '</p></section>' +
+      (Array.isArray(p.question_pages) ? p.question_pages.slice(0,3).map((page,index) => '<section class="p-extra-question-page" data-question-page="' + (index+1) + '" hidden><p class="p-page-count">PAGE ' + (index+2) + ' OF ' + (p.question_pages.length+1) + '</p><h2 class="p-card-question">' + escapeText(page.question || "One more little question…") + '</h2><p class="p-card-message">' + escapeText(page.message || "") + '</p></section>').join("") : '') +
+      (Array.isArray(p.question_pages) && p.question_pages.length ? '<div class="p-page-navigation"><button type="button" class="p-page-back" disabled>← Back</button><button type="button" class="p-page-next">Next →</button></div>' : '') +
+      '<div class="p-card-actions"' + (Array.isArray(p.question_pages) && p.question_pages.length ? ' hidden' : '') + '><button class="p-card-yes" id="recipient-yes">' + escapeText(p.yes_text || "Yes, absolutely! ♥") + '</button><button class="p-card-no" id="recipient-no">' + escapeText(theme.no) + '</button></div>' +
       '<p class="p-card-response" id="recipient-feedback" aria-live="polite"></p>' +
       '<div class="p-card-foot"><span>MADE WITH A LITTLE NERVE</span><span>♡ JUST FOR YOU</span></div></div>';
   }
@@ -227,7 +229,21 @@
     if (!userState) return;
     let theme = query.get("theme") || "sweet";
     if (!themes[theme]) theme = "sweet";
-    $$("[data-p-theme]").forEach(btn => {
+    const pageCount = $("#extra-page-count");
+    const pageEditor = $("#extra-pages-editor");
+    function renderExtraPageEditors() {
+      if (!pageCount || !pageEditor) return;
+      const count = Math.max(0, Math.min(3, Number(pageCount.value) || 0));
+      const previous = $(".p-extra-page-editor", pageEditor).map(el => ({ question: $("[data-extra-question]", el).value, message: $("[data-extra-message]", el).value }));
+      pageEditor.innerHTML = Array.from({ length: count }, (_, index) => {
+        const item = previous[index] || {};
+        return '<div class="p-extra-page-editor"><h3>Extra page ' + (index + 2) + '</h3><div class="p-field"><label>Question</label><input data-extra-question maxlength="180" placeholder="What else would you like to ask?" value="' + escapeText(item.question || "") + '"></div><div class="p-field"><label>Message (optional)</label><textarea data-extra-message maxlength="500" rows="2" placeholder="Add a little context…">' + escapeText(item.message || "") + '</textarea></div></div>';
+      }).join("");
+      pageEditor.querySelectorAll("input,textarea").forEach(el => el.addEventListener("input", renderDraft));
+      renderDraft();
+    }
+    pageCount?.addEventListener("change", renderExtraPageEditors);
+    $("[data-p-theme]").forEach(btn => {
       btn.setAttribute("aria-pressed", String(btn.dataset.pTheme === theme));
       btn.addEventListener("click", () => {
         theme = btn.dataset.pTheme;
@@ -255,7 +271,9 @@
         question: $("#question").value.trim().slice(0, 180) || "Will you be my person?",
         message: $("#message").value.trim().slice(0, 1000),
         yes_text: $("#yes-text").value.trim().slice(0, 60) || "Yes, absolutely! ♥",
-        theme
+        theme,
+        question_pages: $(".p-extra-page-editor").slice(0, 3).map(el => ({ question: $("[data-extra-question]", el).value.trim().slice(0, 180), message: $("[data-extra-message]", el).value.trim().slice(0, 500) })),
+        dodge_no: Boolean($("#dodge-no") && $("#dodge-no").checked)
       };
     }
     function renderDraft() {
@@ -403,6 +421,34 @@
       const proposal = await fetchProposal(id);
       if (!proposal) { root.innerHTML = '<div class="p-empty"><div class="icon">♡</div><h3>This proposal is not available.</h3><p>It may have been deleted or the link may be incorrect.</p></div>'; return; }
       root.innerHTML = cardMarkup(proposal);
+      const card = root.querySelector(".p-card");
+      const pages = $(".p-main-question-page, .p-extra-question-page", card);
+      if (pages.length > 1) {
+        let current = 0;
+        const back = $(".p-page-back", card), next = $(".p-page-next", card), actions = $(".p-card-actions", card);
+        const showPage = index => {
+          current = Math.max(0, Math.min(pages.length - 1, index));
+          pages.forEach((page, i) => { page.hidden = i !== current; });
+          back.disabled = current === 0;
+          next.hidden = current === pages.length - 1;
+          actions.hidden = current !== pages.length - 1;
+          $(".p-page-count", card).forEach(el => { el.textContent = "PAGE " + (current + 1) + " OF " + pages.length; });
+        };
+        back.addEventListener("click", () => showPage(current - 1));
+        next.addEventListener("click", () => showPage(current + 1));
+        showPage(0);
+      }
+      const noButton = $("#recipient-no", root);
+      if (noButton && card.dataset.dodgeNo === "true") {
+        let moves = 0;
+        const dodge = () => {
+          if (noButton.disabled || moves++ > 12) return;
+          noButton.style.transform = "translate(" + Math.round((Math.random()*2-1)*90) + "px," + Math.round((Math.random()*2-1)*55) + "px)";
+        };
+        noButton.addEventListener("pointerenter", dodge);
+        noButton.addEventListener("focus", dodge);
+        noButton.addEventListener("touchstart", dodge, { passive: true });
+      }
       const handleAnswer = async answer => {
         const feedback = $("#recipient-feedback");
         const buttons = $$(".p-card-actions button", root);
