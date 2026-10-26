@@ -1,6 +1,6 @@
-/* Configure these with your Supabase project's public URL and anon/publishable key.
-   Never put a service_role key in a browser file. */
+/* Public Supabase project configuration for WillYouBeMine.
+   Safe for browser use: use only the publishable/anon key, never a secret/service_role key. */
 window.WYBM_CONFIG = {
-  supabaseUrl: "",
-  supabaseAnonKey: ""
+  supabaseUrl: "https://tlddklidtlugririnsiz.supabase.co",
+  supabaseAnonKey: "sb_publishable_uu0n_tmzcaYtmTBNx4HQpg_uZlgvmkj"
 };
