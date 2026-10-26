@@ -76,3 +76,20 @@ img,svg,video,canvas{max-width:100%;height:auto}
 @media(hover:none){
   .p-button:hover,.p-idea:hover{transform:none;box-shadow:none}
 }
+
+/* A joyful, lightweight celebration after a YES response */
+.p-card{isolation:isolate}
+.p-celebration-banner{position:relative;z-index:3;display:grid;justify-items:center;gap:5px;width:100%;padding:12px 10px;margin:8px 0 2px;border:1px solid #efc2cb;border-radius:10px;background:linear-gradient(135deg,#fff0f2,#fff8e8);color:#a83f61;animation:p-celebrate-pop .55s cubic-bezier(.2,.8,.2,1) both}
+.p-celebration-banner strong{font:600 clamp(15px,3vw,20px)/1.25 var(--p-serif);text-align:center}
+.p-celebration-banner>span:last-child{font-size:11px;line-height:1.5;text-align:center;color:#916a76}
+.p-celebration-sparkle{font-size:24px;line-height:1;animation:p-celebrate-spin 1.8s ease-in-out infinite}
+.p-celebration-layer{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:5}
+.p-celebration-piece{position:absolute;left:var(--piece-x);top:-32px;font-size:var(--piece-size);color:#d76b80;text-shadow:0 2px 8px #d76b8030;animation:p-celebrate-fall var(--piece-duration) ease-in var(--piece-delay) forwards;will-change:transform,opacity}
+.p-celebration-piece:nth-child(3n){color:#d5a54b}
+.p-celebration-piece:nth-child(3n + 1){color:#b78acb}
+.p-celebration-piece:nth-child(4n){color:#e98f9f}
+@keyframes p-celebrate-pop{0%{opacity:0;transform:translateY(12px) scale(.92)}70%{transform:translateY(-2px) scale(1.02)}100%{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes p-celebrate-spin{0%,100%{transform:rotate(-12deg) scale(1)}50%{transform:rotate(12deg) scale(1.18)}}
+@keyframes p-celebrate-fall{0%{transform:translate3d(0,-10px,0) rotate(0deg);opacity:0}10%{opacity:1}100%{transform:translate3d(24px,560px,0) rotate(540deg);opacity:0}}
+@media(max-width:600px){.p-celebration-banner{padding:11px 8px;margin:6px 0}.p-celebration-banner strong{font-size:16px}.p-celebration-banner>span:last-child{font-size:10px}}
+@media(prefers-reduced-motion:reduce){.p-celebration-banner,.p-celebration-sparkle,.p-celebration-piece{animation:none!important}.p-celebration-piece{display:none}}
