@@ -340,7 +340,7 @@
     if (!id) { root.innerHTML = '<div class="p-empty"><h3>This link is incomplete.</h3><p>Ask the sender to share their proposal link again.</p></div>'; return; }
     try {
       const proposal = await fetchProposal(id);
-      if (!proposal) { root.innerHTML = '<div class="p-empty"><div class="icon">♡</div><h3>This proposal isn't available.</h3><p>It may have been deleted or the link may be incorrect.</p></div>'; return; }
+      if (!proposal) { root.innerHTML = '<div class="p-empty"><div class="icon">♡</div><h3>This proposal is not available.</h3><p>It may have been deleted or the link may be incorrect.</p></div>'; return; }
       root.innerHTML = cardMarkup(proposal);
       const handleAnswer = async answer => {
         const feedback = $("#recipient-feedback");
