@@ -212,6 +212,7 @@ const d=${serialized};const by=id=>document.getElementById(id);const card=by("ca
   document.addEventListener("keydown", event => {
     if (event.key === "Escape" && overlay.classList.contains("open")) closeBuilder();
   });
+  $("#download-button").addEventListener("click", downloadProposal);
   $("#preview-button").addEventListener("click", () => {
     renderPreview();
     $(".preview-wrap").scrollIntoView({ behavior: "smooth", block: "nearest" });
