@@ -222,7 +222,7 @@
   function initQuestionPages(root) {
     const card = root && root.querySelector(".p-card");
     if (!card) return;
-    const pages = $(".p-main-question-page, .p-extra-question-page", card);
+    const pages = $$(".p-main-question-page, .p-extra-question-page", card);
     if (pages.length <= 1) return;
     const back = $(".p-page-back", card);
     const next = $(".p-page-next", card);
@@ -234,7 +234,7 @@
       if (back) back.disabled = current === 0;
       if (next) next.hidden = current === pages.length - 1;
       if (actions) actions.hidden = current !== pages.length - 1;
-      $$(".p-page-count", card).forEach(el => {
+      $$$(".p-page-count", card).forEach(el => {
         el.textContent = "PAGE " + (current + 1) + " OF " + pages.length;
       });
     }
