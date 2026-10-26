@@ -127,3 +127,14 @@ test("recipient page initializes the card before reading optional No-button sett
   assert.ok(dodgeCheck > cardDeclaration, "card is declared before dodge setting is read");
   assert.match(proposalInit, /try \{ await initSupabase\(\); \}/);
 });
+
+
+test("post-login redirects are restricted to same-site pages", () => {
+  const portal = fs.readFileSync(path.join(root, "portal.js"), "utf8");
+  assert.match(portal, /target\.origin === location\.origin/);
+  assert.match(portal, /const allowedPages = \["create\.html", "dashboard\.html", "inbox\.html", "proposal\.html", "index\.html"\]/);
+  assert.match(portal, /!next\.startsWith\("\/"\)/);
+  assert.match(portal, /!next\.includes\("\\\\"\)/);
+  assert.match(portal, /!next\.includes\(":"\)/);
+  assert.doesNotMatch(portal, /next && !next\.includes\("\:\/\/"/);
+});
