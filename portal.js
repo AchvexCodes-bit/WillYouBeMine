@@ -474,7 +474,7 @@
     if ($("#proposal-page")) await initProposal();
     if ($("#inbox-list")) await initInbox();
     if ($("#login-form")) await initLogin();
-    $("[data-signout]").forEach(btn => btn.addEventListener("click", async () => {
+    $$("[data-signout]").forEach(btn => btn.addEventListener("click", async () => {
       btn.disabled = true;
       try {
         if (client) {
