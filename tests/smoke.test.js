@@ -88,3 +88,42 @@ test("multi-page portal JavaScript parses and preserves publishing/link and auth
   assert.match(portal, /Could not sign out:/);
   assert.match(portal, /This proposal is not available/);
 });
+
+
+test("creator controls use collection selectors instead of single-element selectors", () => {
+  const portal = fs.readFileSync(path.join(root, "portal.js"), "utf8");
+  assert.doesNotMatch(portal, /\$\("\[data-p-theme\]"\)\.forEach/);
+  assert.doesNotMatch(portal, /\$\("\.p-extra-page-editor", pageEditor\)\.map/);
+  assert.doesNotMatch(portal, /question_pages:\s*\$\("\.p-extra-page-editor"\)/);
+  assert.doesNotMatch(portal, /const pages = \$\("\.p-main-question-page, \.p-extra-question-page", card\)/);
+  assert.doesNotMatch(portal, /\$\("\.p-page-count", card\)\.forEach/);
+});
+
+test("extra pages are capped, validated, persisted, and navigable in preview and recipient view", () => {
+  const portal = fs.readFileSync(path.join(root, "portal.js"), "utf8");
+  const createPage = fs.readFileSync(path.join(root, "create.html"), "utf8");
+  const schema = fs.readFileSync(path.join(root, "supabase-schema.sql"), "utf8");
+  assert.match(createPage, /id="extra-page-count"/);
+  assert.match(createPage, /option value="3">3 extra pages \(4 total\)/);
+  assert.match(createPage, /id="dodge-no"/);
+  assert.match(portal, /Math\.min\(3, Number\(pageCount\.value\)/);
+  assert.match(portal, /question_pages:\s*\$\$\("\.p-extra-page-editor"\)\.slice\(0, 3\)/);
+  assert.match(portal, /findIndex\(page => !page\.question\)/);
+  assert.match(portal, /initQuestionPages\(preview\)/);
+  assert.match(portal, /initQuestionPages\(root\)/);
+  assert.match(schema, /question_pages jsonb not null default '\[\]'::jsonb/i);
+  assert.match(schema, /dodge_no boolean not null default false/i);
+});
+
+test("recipient page initializes the card before reading optional No-button settings", () => {
+  const portal = fs.readFileSync(path.join(root, "portal.js"), "utf8");
+  const start = portal.indexOf("async function initProposal");
+  const end = portal.indexOf("async function initInbox", start);
+  const proposalInit = portal.slice(start, end);
+  assert.ok(start >= 0 && end > start, "proposal loader is present");
+  const cardDeclaration = proposalInit.indexOf('const card = root.querySelector(".p-card")');
+  const dodgeCheck = proposalInit.indexOf("card.dataset.dodgeNo");
+  assert.ok(cardDeclaration >= 0, "proposal card is declared");
+  assert.ok(dodgeCheck > cardDeclaration, "card is declared before dodge setting is read");
+  assert.match(proposalInit, /try \{ await initSupabase\(\); \}/);
+});
