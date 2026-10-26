@@ -201,7 +201,7 @@ const d=${serialized};const by=id=>document.getElementById(id);const card=by("ca
   }
 
   $("[data-open-builder]").forEach(button => button.addEventListener("click", () => { location.href = "create.html"; }));
-  $(".template-card").forEach(button => button.addEventListener("click", () => { location.href = "create.html?theme=" + encodeURIComponent(button.dataset.template); }));
+  $$(".template-card").forEach(button => button.addEventListener("click", () => { location.href = "create.html?theme=" + encodeURIComponent(button.dataset.template); }));
   $$(".theme-option").forEach(button => button.addEventListener("click", () => pickTheme(button.dataset.theme)));
   Object.values(fields).forEach(field => {
     field.addEventListener("input", renderPreview);
