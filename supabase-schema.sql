@@ -95,6 +95,6 @@ where jobname = 'wybm-delete-expired-proposals';
 
 select cron.schedule(
   'wybm-delete-expired-proposals',
-  '17 3 * * *',
+  '17 * * * *',
   $job$delete from public.proposals where created_at <= now() - interval '15 days';$job$
 );
