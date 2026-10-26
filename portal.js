@@ -83,7 +83,7 @@
   async function fetchProposal(id) {
     if (configured) {
       if (!client) await initSupabase();
-      const result = await client.from("proposals").select("id,owner_id,creator_name,recipient_name,question,message,yes_text,theme,status,created_at").eq("id", id).eq("status", "published").maybeSingle();
+      const result = await client.from("proposals").select("id,creator_name,recipient_name,question,message,yes_text,theme,status,created_at").eq("id", id).eq("status", "published").maybeSingle();
       if (result.error) throw result.error;
       return result.data;
     }
