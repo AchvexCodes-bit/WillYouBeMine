@@ -200,8 +200,8 @@ const d=${serialized};const by=id=>document.getElementById(id);const card=by("ca
     showToast("Fresh start — your proposal has been reset.");
   }
 
-  $$("[data-open-builder]").forEach(button => button.addEventListener("click", () => openBuilder()));
-  $$(".template-card").forEach(button => button.addEventListener("click", () => openBuilder(button.dataset.template)));
+  $("[data-open-builder]").forEach(button => button.addEventListener("click", () => { location.href = "create.html"; }));
+  $(".template-card").forEach(button => button.addEventListener("click", () => { location.href = "create.html?theme=" + encodeURIComponent(button.dataset.template); }));
   $$(".theme-option").forEach(button => button.addEventListener("click", () => pickTheme(button.dataset.theme)));
   Object.values(fields).forEach(field => {
     field.addEventListener("input", renderPreview);
