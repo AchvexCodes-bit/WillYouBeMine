@@ -21,7 +21,7 @@ test("builder has fields and a download control", () => {
 
 test("all advertised themes exist in both markup and script", () => {
   for (const theme of ["sweet", "midnight", "playful"]) {
-    assert.ok(html.includes(`data-theme="${theme}"`) || html.includes(`data-theme="${theme}"`) === false);
+    assert.ok(js.includes(`${theme}:`), `missing theme config ${theme}`);
     assert.ok(js.includes(`${theme}:`), `missing script theme ${theme}`);
   }
   assert.match(html, /data-template="sweet"/);
