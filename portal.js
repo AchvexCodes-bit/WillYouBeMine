@@ -72,7 +72,11 @@
         el.href = "login.html";
       }
     });
-    $$("[data-user-email]").forEach(el => { el.textContent = currentUser ? currentUser.email : "Guest preview"; });
+    $("[data-user-email]").forEach(el => { el.textContent = currentUser ? currentUser.email : (configured ? "Not signed in" : "Guest preview"); });
+    $("[data-signout], #signout-button").forEach(el => {
+      el.classList.toggle("p-hidden", !configured || !currentUser);
+      el.disabled = !configured || !currentUser;
+    });
   }
   function setModeNotice() {
     $$("[data-demo-warning]").forEach(el => {
@@ -221,21 +225,90 @@
   async function initDashboard() {
     const root = $("#dashboard-list");
     if (!root) return;
-    await initSupabase();
-    setModeNotice();
-    updateAuthLinks();
-    const userState = await requireUser();
-    if (!userState) return;
-    $("#signout-button")?.addEventListener("click", async () => {
-      if (client) await client.auth.signOut();
-      location.href = "index.html";
-    });
     try {
+      await initSupabase();
+      setModeNotice();
+      updateAuthLinks();
+      const userState = await requireUser();
+      if (!userState) return;
+      $("#signout-button")?.addEventListener("click", async event => {
+        const button = event.currentTarget;
+        button.disabled = true;
+        try {
+          if (client) {
+            const result = await client.auth.signOut();
+            if (result.error) throw result.error;
+          }
+          currentUser = null;
+          location.href = "index.html";
+        } catch (error) {
+          button.disabled = false;
+          const status = $("#page-status") || root;
+          status.textContent = "Could not sign out: " + (error.message || "Please try again.");
+          status.classList.remove("p-hidden");
+          status.classList.add("p-notice", "error");
+        }
+      });
       const proposals = await listMyProposals();
       const responses = await listResponses(proposals.map(p => p.id));
       $("#stat-proposals").textContent = String(proposals.length);
       $("#stat-answers").textContent = String(responses.length);
       $("#stat-open").textContent = String(proposals.filter(p => p.status === "published").length);
+      const createdId = query.get("created");
+      const createdProposal = createdId ? proposals.find(p => p.id === createdId) : null;
+      $("#created-link-banner")?.remove();
+      if (createdProposal) {
+        const link = proposalUrl(createdProposal.id);
+        const banner = document.createElement("section");
+        banner.id = "created-link-banner";
+        banner.className = "p-notice success";
+        banner.style.margin = "18px 0";
+        const heading = document.createElement("strong");
+        heading.textContent = "Your proposal is ready!";
+        const description = document.createElement("p");
+        description.textContent = "Copy this link to share it with your recipient:";
+        const input = document.createElement("input");
+        input.id = "created-proposal-url";
+        input.readOnly = true;
+        input.value = link;
+        input.setAttribute("aria-label", "Your proposal link");
+        input.style.cssText = "width:100%;max-width:720px;padding:11px;border:1px solid #eedbdc;border-radius:6px;background:white";
+        const actions = document.createElement("div");
+        actions.className = "p-actions";
+        const copy = document.createElement("button");
+        copy.type = "button";
+        copy.id = "copy-created-link";
+        copy.className = "p-button";
+        copy.textContent = "Copy proposal link";
+        const open = document.createElement("a");
+        open.className = "p-button ghost";
+        open.href = link;
+        open.target = "_blank";
+        open.rel = "noopener";
+        open.textContent = "Open proposal";
+        actions.append(copy, open);
+        banner.append(heading, description, input, actions);
+        if (!configured) {
+          const warning = document.createElement("p");
+          warning.className = "p-small";
+          warning.textContent = "Preview mode: this link works only in this browser. Configure Supabase to share it across devices.";
+          banner.appendChild(warning);
+        }
+        root.parentNode.insertBefore(banner, root);
+        copy.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(link);
+            copy.textContent = "Copied!";
+          } catch (_) {
+            input.focus();
+            input.select();
+            try {
+              if (document.execCommand("copy")) copy.textContent = "Copied!";
+              else window.prompt("Copy your proposal link:", link);
+            } catch (_) { window.prompt("Copy your proposal link:", link); }
+          }
+        });
+      }
       if (!proposals.length) {
         root.innerHTML = '<div class="p-empty"><div class="icon">♡</div><h3>Your story starts here.</h3><p>Create your first proposal and share its unique link with someone special.</p><a class="p-button" href="create.html">Create a proposal ↗</a></div>';
         return;
@@ -321,7 +394,8 @@
   async function initLogin() {
     const form = $("#login-form");
     if (!form) return;
-    await initSupabase();
+    try { await initSupabase(); }
+    catch (error) { notice(error.message || "Account service could not connect.", "error"); }
     setModeNotice();
     const signup = $("#signup-mode");
     let mode = query.get("mode") === "signup" ? "signup" : "login";
@@ -363,9 +437,19 @@
     if ($("#proposal-page")) await initProposal();
     if ($("#inbox-list")) await initInbox();
     if ($("#login-form")) await initLogin();
-    $$("[data-signout]").forEach(btn => btn.addEventListener("click", async () => {
-      if (client) await client.auth.signOut();
-      location.href = "index.html";
+    $("[data-signout]").forEach(btn => btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      try {
+        if (client) {
+          const result = await client.auth.signOut();
+          if (result.error) throw result.error;
+        }
+        currentUser = null;
+        location.href = "index.html";
+      } catch (error) {
+        btn.disabled = false;
+        notice("Could not sign out: " + (error.message || "Please try again."), "error");
+      }
     }));
   }
   document.addEventListener("DOMContentLoaded", init);
