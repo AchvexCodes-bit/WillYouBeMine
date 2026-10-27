@@ -64,7 +64,6 @@
   function demoResponses() { return safeJson(demoResponseKey, []); }
   function saveDemoResponses(list) { localStorage.setItem(demoResponseKey, JSON.stringify(list)); }
   function makeId() { return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2)); }
-  function shortId(id) { return String(id || "").slice(0, 8); }
   function proposalUrl(id) { return new URL("proposal.html?id=" + encodeURIComponent(id), location.href).href; }
   function dateLabel(value) {
     if (!value) return "Just now";
