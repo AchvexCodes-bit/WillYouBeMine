@@ -283,8 +283,9 @@
       if (back) back.disabled = current === 0;
       if (next) next.hidden = current === pages.length - 1;
       if (actions) actions.hidden = current !== pages.length - 1;
-      $$(".p-page-count", card).forEach(el => {
-        el.textContent = "PAGE " + (current + 1) + " OF " + pages.length;
+      pages.forEach((page, index) => {
+        const counter = $(".p-page-count", page);
+        if (counter) counter.textContent = "PAGE " + (index + 1) + " OF " + pages.length;
       });
     }
     if (back) back.addEventListener("click", () => showPage(current - 1));
