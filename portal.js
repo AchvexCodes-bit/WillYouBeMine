@@ -377,7 +377,12 @@
     if (configured) {
       if (!client) await initSupabase();
       if (!currentUser) return [];
-      const result = await client.from("proposals").select("id,creator_name,recipient_name,question,theme,status,created_at").eq("owner_id", currentUser.id).order("created_at", { ascending: false });
+      const fields = "id,creator_name,recipient_name,question,theme,status,created_at";
+      let result = await client.from("proposals").select(fields + ",photo_gallery").eq("owner_id", currentUser.id).order("created_at", { ascending: false });
+      if (result.error && isMissingPhotoColumn(result.error)) {
+        result = await client.from("proposals").select(fields).eq("owner_id", currentUser.id).order("created_at", { ascending: false });
+        if (!result.error && Array.isArray(result.data)) result.data.forEach(proposal => { proposal.photo_gallery = []; });
+      }
       if (result.error) throw result.error;
       return result.data || [];
     }
