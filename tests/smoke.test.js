@@ -138,3 +138,42 @@ test("post-login redirects are restricted to same-site pages", () => {
   assert.match(portal, /!next\.includes\(":"\)/);
   assert.doesNotMatch(portal, /next && !next\.includes\("\:\/\/"/);
 });
+
+test("proposal creator exposes saved greeting, button, palette, typography, and motion options", () => {
+  const createPage = fs.readFileSync(path.join(root, "create.html"), "utf8");
+  const portal = fs.readFileSync(path.join(root, "portal.js"), "utf8");
+  const css = fs.readFileSync(path.join(root, "portal.css"), "utf8");
+  for (const id of ["custom-greeting", "no-text", "accent-color", "font-style", "romantic-effects"]) {
+    assert.ok(createPage.includes(`id="${id}"`), `missing ${id}`);
+  }
+  for (const option of ["rose", "lavender", "ocean", "sage", "gold"]) {
+    assert.ok(css.includes(`data-accent=${option}`), `missing accent ${option}`);
+  }
+  assert.match(portal, /custom_options:\s*\{/);
+  assert.match(portal, /data-accent=/);
+  assert.match(portal, /isMissingCustomOptionsColumn/);
+  assert.match(portal, /customization-upgrade-needed/);
+  assert.doesNotThrow(() => new vm.Script(portal), "portal.js must parse after customization changes");
+});
+
+test("Supabase customization migration is repeatable and keeps older projects publishing", () => {
+  const schema = fs.readFileSync(path.join(root, "supabase-schema.sql"), "utf8");
+  const migrationPath = path.join(root, "customize-proposals.sql");
+  assert.ok(fs.existsSync(migrationPath), "missing customization migration");
+  const migration = fs.readFileSync(migrationPath, "utf8");
+  assert.match(schema, /custom_options jsonb not null default '\{\}'::jsonb/i);
+  assert.match(migration, /add column if not exists custom_options jsonb/i);
+  assert.match(migration, /jsonb_typeof\(custom_options\) = 'object'/i);
+  const portal = fs.readFileSync(path.join(root, "portal.js"), "utf8");
+  assert.match(portal, /legacyPayload/);
+  assert.match(portal, /customizationSaved: false/);
+});
+
+test("Achvex Ltd website and Instagram links are visible across main pages", () => {
+  for (const file of ["index.html", "create.html", "proposal.html", "dashboard.html", "inbox.html", "login.html"]) {
+    const content = fs.readFileSync(path.join(root, file), "utf8");
+    assert.ok(content.includes("https://achvex-website.vercel.app/"), `missing Achvex website in ${file}`);
+    assert.ok(content.includes("https://www.instagram.com/achvexcodes/"), `missing Achvex Instagram in ${file}`);
+    assert.match(content, /Achvex Ltd|ACHVEX LTD/);
+  }
+});
