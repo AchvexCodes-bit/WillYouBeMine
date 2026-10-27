@@ -118,9 +118,11 @@ test("recipient Next and Back navigate from the fixed intro through extras to th
   assert.equal(actions.hidden, true);
 });
 
-test("answer form includes the responder name field that the submit handler saves", () => {
-  assert.match(portal, /id="responder-name" maxlength="60"/);
-  assert.match(portal, /const name = \$\("#responder-name"\)/);
+test("recipient answer flow no longer asks for the responder name", () => {
+  const proposalPage = fs.readFileSync(path.join(__dirname, "..", "proposal.html"), "utf8");
+  assert.doesNotMatch(proposalPage, /id="responder-name"/);
+  assert.doesNotMatch(portal, /const name = \$\("#responder-name"\)/);
+  assert.match(portal, /const name = ""/);
   assert.match(portal, /recipient_name: recipientName \|\| ""/);
 });
 
