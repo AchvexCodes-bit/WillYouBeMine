@@ -350,3 +350,45 @@ test("photo upload avoids serial network waits and keeps saved gallery order", (
   assert.match(portal, /image\.decoding = "async"/);
   assert.match(portal, /createSignedUrl\(photo\.path, PHOTO_URL_TTL_SECONDS\)/);
 });
+
+
+test("gallery signs every photo in one Storage request", async () => {
+  const resolverSource = extractFunction(portal, "resolveProposalPhotos");
+  const gallery = [
+    { path: "owner/proposal/one.webp", caption: "One" },
+    { path: "owner/proposal/two.webp", caption: "Two" }
+  ];
+  let batchCalls = 0;
+  const storage = {
+    async createSignedUrls(paths, expiry) {
+      batchCalls++;
+      assert.equal(expiry, 900);
+      assert.deepEqual(Array.from(paths), gallery.map(photo => photo.path));
+      return {
+        error: null,
+        data: gallery.map(photo => ({
+          path: photo.path,
+          signedUrl: "https://storage.example/signed/" + encodeURIComponent(photo.path),
+          error: null
+        }))
+      };
+    }
+  };
+  const resolver = vm.runInNewContext("(async " + resolverSource + ")", {
+    configured: true,
+    client: { storage: { from: bucket => { assert.equal(bucket, "proposal-photos"); return storage; } } },
+    currentUser: null,
+    PHOTO_BUCKET: "proposal-photos",
+    MAX_PROPOSAL_PHOTOS: 5,
+    PHOTO_URL_TTL_SECONDS: 900,
+    initSupabase: async () => {},
+    Promise,
+    Map,
+    Array
+  });
+  const resolved = await resolver({ photo_gallery: gallery });
+  assert.equal(batchCalls, 1);
+  assert.equal(resolved.length, 2);
+  assert.ok(resolved.every(photo => photo.url.startsWith("https://storage.example/signed/")));
+  assert.deepEqual(resolved.map(photo => photo.caption), ["One", "Two"]);
+});
