@@ -751,10 +751,12 @@
     try {
       const proposal = await fetchProposal(id);
       if (!proposal) { root.innerHTML = '<div class="p-empty"><div class="icon">♡</div><h3>This proposal is not available.</h3><p>It may have been deleted or the link may be incorrect.</p></div>'; return; }
+      proposal.photo_gallery = await resolveProposalPhotos(proposal);
       root.innerHTML = cardMarkup(proposal);
       initRomanticScene(root);
       const card = root.querySelector(".p-card");
       initQuestionPages(root);
+      initPhotoGallery(root);
       const noButton = $("#recipient-no", root);
       if (noButton && card.dataset.dodgeNo === "true") {
         let moves = 0;
