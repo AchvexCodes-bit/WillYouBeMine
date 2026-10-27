@@ -265,3 +265,87 @@ test("dashboard triggers best-effort orphaned photo cleanup without blocking pro
   assert.match(portal, /await cleanupOrphanedProposalPhotos\(proposals\)/);
   assert.match(portal, /catch \(_\) \{\s*\/\/ Cleanup is best-effort: a Storage hiccup must not break the dashboard\./);
 });
+
+
+test("recipient proposal renders before signed photo URLs resolve", () => {
+  const start = portal.indexOf("async function initProposal");
+  const end = portal.indexOf("async function initInbox", start);
+  const proposalInit = portal.slice(start, end);
+  const resolveStart = proposalInit.indexOf("const photoResolution =");
+  const renderCard = proposalInit.indexOf("root.innerHTML = cardMarkup(proposal)");
+  const attachHandlers = proposalInit.indexOf("initQuestionPages(root)");
+  const backgroundResolution = proposalInit.indexOf(".then(photos => renderResolvedPhotoGallery(root, photos))");
+  assert.ok(resolveStart >= 0 && renderCard > resolveStart);
+  assert.ok(attachHandlers > renderCard, "navigation is initialized immediately after the proposal renders");
+  assert.ok(backgroundResolution > attachHandlers, "photo URLs update the gallery in the background");
+  assert.doesNotMatch(proposalInit, /proposal\.photo_gallery = await resolveProposalPhotos/);
+});
+
+test("photo gallery shows lightweight placeholders while secure URLs are loading", () => {
+  const cardFn = extractFunction(portal, "cardMarkup");
+  const themes = {
+    sweet: { greeting: "Hey, you.", note: "A little note", no: "Maybe later" },
+    midnight: { greeting: "Under these stars,", note: "A little note", no: "Let me think" },
+    playful: { greeting: "Okay, so listen…", note: "A little note", no: "Not today!" }
+  };
+  const cardMarkup = vm.runInNewContext("(" + cardFn + ")", {
+    themes,
+    escapeText: value => String(value == null ? "" : value),
+    MAX_PROPOSAL_PHOTOS: 5
+  });
+  const markup = cardMarkup({
+    theme: "sweet",
+    question: "Will you be my person?",
+    question_pages: [],
+    photo_gallery: [{ path: "owner/proposal/photo.webp", caption: "A memory" }]
+  });
+  assert.match(markup, /p-photo-placeholder/);
+  assert.match(markup, /Preparing photo/);
+  assert.match(markup, /p-photo-question-page/);
+  assert.match(markup, /p-main-question-page" data-question-page="2" hidden/);
+  assert.match(markup, /PAGE 3 OF 3/);
+});
+
+test("large photos are resized and encoded as WebP before storage", async () => {
+  const helperSource = extractFunction(portal, "prepareOptimizedPhoto");
+  let closed = false;
+  const canvas = {
+    width: 0,
+    height: 0,
+    getContext() { return { drawImage() {} }; },
+    toBlob(callback, type, quality) {
+      assert.equal(type, "image/webp");
+      assert.equal(quality, 0.78);
+      callback(new Blob(["compressed-photo"], { type: "image/webp" }));
+    }
+  };
+  const bitmap = { width: 4000, height: 3000, close() { closed = true; } };
+  const prepare = vm.runInNewContext("(async " + helperSource + ")", {
+    createImageBitmap: async () => bitmap,
+    document: { createElement: () => canvas },
+    MAX_PHOTO_BYTES: 5 * 1024 * 1024,
+    Blob,
+    File,
+    Date,
+    String,
+    Math,
+    Promise
+  });
+  const original = new File([Buffer.alloc(800 * 1024)], "holiday.jpg", { type: "image/jpeg" });
+  const optimized = await prepare(original);
+  assert.equal(canvas.width, 1600);
+  assert.equal(canvas.height, 1200);
+  assert.equal(optimized.type, "image/webp");
+  assert.match(optimized.name, /\.webp$/);
+  assert.ok(optimized.size < original.size);
+  assert.equal(closed, true);
+});
+
+test("photo upload avoids serial network waits and keeps saved gallery order", () => {
+  assert.match(portal, /Promise\.allSettled\(prepared\.map\(async \(item, index\)/);
+  assert.match(portal, /sort\(\(a, b\) => a\.index - b\.index\)/);
+  assert.match(portal, /loading="eager" decoding="async"/);
+  assert.match(portal, /image\.loading = "eager"/);
+  assert.match(portal, /image\.decoding = "async"/);
+  assert.match(portal, /createSignedUrl\(photo\.path, PHOTO_URL_TTL_SECONDS\)/);
+});
