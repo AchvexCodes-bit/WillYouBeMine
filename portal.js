@@ -552,31 +552,38 @@
   async function initInbox() {
     const root = $("#inbox-list");
     if (!root) return;
-    let userState;
     try {
       await initSupabase();
       setModeNotice();
-      userState = await requireUser();
+      const userState = await requireUser();
       if (!userState) return;
     } catch (error) {
       root.innerHTML = '<div class="p-notice error">Could not connect to your account or load replies: ' + escapeText(error.message) + '</div>';
       return;
     }
+    root.innerHTML = '<div class="p-loader">Loading your replies…</div>';
     try {
       const proposals = await listMyProposals();
       const wanted = query.get("id");
       const visible = wanted ? proposals.filter(p => p.id === wanted) : proposals;
+      if (wanted && !visible.length) {
+        root.innerHTML = '<div class="p-empty"><div class="icon">♡</div><h3>We couldn’t find that proposal in this account.</h3><p>Make sure you’re signed in with the account that created the link.</p><a class="p-button ghost" href="dashboard.html">Back to my proposals</a></div>';
+        return;
+      }
       const responses = await listResponses(visible.map(p => p.id));
+      const title = $("#inbox-count");
+      if (title) title.textContent = String(responses.length);
       if (!responses.length) {
-        root.innerHTML = '<div class="p-empty"><div class="icon">♡</div><h3>No replies just yet.</h3><p>When someone responds to your proposal, their answer and optional note will appear here.</p><a class="p-button ghost" href="dashboard.html">Back to dashboard</a></div>';
+        root.innerHTML = '<div class="p-empty"><div class="icon">♡</div><h3>No replies just yet.</h3><p>' + (wanted ? 'This proposal has no saved replies yet. Once the recipient submits their answer, it will appear here.' : 'When someone responds to one of your proposals, their answer and optional note will appear here.') + '</p><a class="p-button ghost" href="dashboard.html">Back to dashboard</a>' + (wanted ? ' <a class="p-button" href="' + escapeText(proposalUrl(wanted)) + '" target="_blank" rel="noopener">Open proposal link ↗</a>' : '') + '</div>';
         return;
       }
       root.innerHTML = responses.map(r => {
         const proposal = visible.find(p => p.id === r.proposal_id);
-        return '<article class="p-list-item"><div><span class="p-pill">' + (r.answer === "yes" ? "They said YES ♥" : "They answered honestly ♡") + '</span><h3>' + escapeText(r.recipient_name || "Your special person") + '</h3><p>Proposal: ' + escapeText(proposal ? proposal.question : "Your proposal") + '<br>Received ' + escapeText(dateLabel(r.created_at)) + '</p>' + (r.message ? '<p style="margin-top:10px">' + escapeText(r.message) + '</p>' : '') + '</div></article>';
+        const yes = r.answer === "yes";
+        return '<article class="p-list-item p-reply-card"><div class="p-reply-content"><span class="p-pill ' + (yes ? 'p-pill-yes' : 'p-pill-no') + '">' + (yes ? 'They said YES ♥' : 'They answered honestly ♡') + '</span><h3>' + escapeText(r.recipient_name || proposal?.recipient_name || "Your special person") + '</h3><p class="p-reply-question"><strong>Your question:</strong> ' + escapeText(proposal ? proposal.question : "Your proposal") + '</p><p class="p-reply-meta">Received ' + escapeText(dateLabel(r.created_at)) + '</p>' + (r.message ? '<div class="p-reply-message"><span>THEIR NOTE</span><p>' + escapeText(r.message) + '</p></div>' : '<p class="p-small p-reply-empty-note">They didn’t add an extra note with their answer.</p>') + '</div><div class="p-reply-actions"><a class="p-button ghost" href="proposal.html?id=' + encodeURIComponent(r.proposal_id) + '" target="_blank" rel="noopener">View proposal</a></div></article>';
       }).join("");
     } catch (error) {
-      root.innerHTML = '<div class="p-notice error">Could not load replies: ' + escapeText(error.message) + '</div>';
+      root.innerHTML = '<div class="p-notice error">Could not load replies: ' + escapeText(error.message) + '<br><span class="p-small">If this is a permission error, run the reply-access SQL migration from the repository in your Supabase SQL Editor.</span></div>';
     }
   }
   async function initLogin() {
