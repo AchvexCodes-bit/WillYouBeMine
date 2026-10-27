@@ -1060,7 +1060,7 @@
         const buttons = $$(".p-card-actions button", root);
         buttons.forEach(b => b.disabled = true);
         const message = $("#recipient-message") ? $("#recipient-message").value.trim().slice(0, 600) : "";
-        const name = $("#responder-name") ? $("#responder-name").value.trim().slice(0, 60) : "";
+        const name = "";
         try {
           await respondToProposal(id, answer, message, name);
           feedback.textContent = answer === "yes" ? "Your answer has been sent. Thank you for sharing this moment. ♥" : "Your answer has been sent. Thank you for being honest. ♡";
@@ -1073,7 +1073,7 @@
       };
       const extra = document.createElement("div");
       extra.className = "p-recipient-details";
-      extra.innerHTML = '<div class="p-divider"></div><div class="p-field"><label for="responder-name">Your name (optional)</label><input id="responder-name" maxlength="60" autocomplete="name" placeholder="Name to include with your answer"></div><div class="p-field"><label for="recipient-message">Want to say a little more? (optional)</label><textarea id="recipient-message" maxlength="600" rows="3" placeholder="Share a note with your answer..."></textarea></div>';
+      extra.innerHTML = '<div class="p-divider"></div><div class="p-field"><label for="recipient-message">Want to say a little more? (optional)</label><textarea id="recipient-message" maxlength="600" rows="3" placeholder="Share a note with your answer..."></textarea></div>';
       const finalPage = root.querySelector(".p-main-question-page");
       if (!finalPage) throw new Error("The final proposal page could not be initialized.");
       finalPage.appendChild(extra);
