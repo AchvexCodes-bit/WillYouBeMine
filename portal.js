@@ -453,18 +453,86 @@
     if (!themes[theme]) theme = "sweet";
     const pageCount = $("#extra-page-count");
     const pageEditor = $("#extra-pages-editor");
+    const photoInput = $("#proposal-photos");
+    const photoEditor = $("#photo-selection-preview");
+    let selectedPhotos = [];
+
+    function updatePageCountLabels() {
+      if (!pageCount) return;
+      Array.from(pageCount.options).forEach(option => {
+        const count = Math.max(0, Number(option.value) || 0);
+        const total = count + 2 + (selectedPhotos.length ? 1 : 0);
+        const label = count === 0 ? "No extra question pages" : count + " extra question " + (count === 1 ? "page" : "pages");
+        option.textContent = label + " (" + total + " total)";
+      });
+    }
+    function releasePhotoPreviews() {
+      selectedPhotos.forEach(photo => {
+        if (photo.previewUrl) URL.revokeObjectURL(photo.previewUrl);
+      });
+    }
+    function renderPhotoEditor() {
+      if (!photoEditor) return;
+      photoEditor.innerHTML = selectedPhotos.map((photo, index) =>
+        '<div class="p-photo-editor-item"><img src="' + escapeText(photo.previewUrl) + '" alt="Selected photo ' + (index + 1) + '">' +
+        '<div class="p-field"><label for="photo-caption-' + index + '">Caption (optional)</label><input id="photo-caption-' + index + '" data-photo-caption="' + index + '" maxlength="120" placeholder="A little note about this memory" value="' + escapeText(photo.caption || "") + '"></div>' +
+        '<button type="button" class="p-button ghost p-photo-remove" data-photo-remove="' + index + '">Remove</button></div>'
+      ).join("");
+      $$("[data-photo-caption]", photoEditor).forEach(input => input.addEventListener("input", () => {
+        const photo = selectedPhotos[Number(input.dataset.photoCaption)];
+        if (photo) photo.caption = input.value.slice(0, 120);
+        renderDraft();
+      }));
+      $$("[data-photo-remove]", photoEditor).forEach(button => button.addEventListener("click", () => {
+        const index = Number(button.dataset.photoRemove);
+        const photo = selectedPhotos[index];
+        if (photo && photo.previewUrl) URL.revokeObjectURL(photo.previewUrl);
+        selectedPhotos.splice(index, 1);
+        if (photoInput) photoInput.value = "";
+        renderPhotoEditor();
+        updatePageCountLabels();
+        renderExtraPageEditors();
+      }));
+    }
     function renderExtraPageEditors() {
       if (!pageCount || !pageEditor) return;
       const count = Math.max(0, Math.min(3, Number(pageCount.value) || 0));
       const previous = $$(".p-extra-page-editor", pageEditor).map(el => ({ question: $("[data-extra-question]", el).value, message: $("[data-extra-message]", el).value }));
+      const pageOffset = selectedPhotos.length ? 1 : 0;
       pageEditor.innerHTML = Array.from({ length: count }, (_, index) => {
         const item = previous[index] || {};
-        return '<div class="p-extra-page-editor"><h3>Extra page ' + (index + 2) + '</h3><div class="p-field"><label>Question</label><input data-extra-question maxlength="180" placeholder="What else would you like to ask?" value="' + escapeText(item.question || "") + '"></div><div class="p-field"><label>Message (optional)</label><textarea data-extra-message maxlength="500" rows="2" placeholder="Add a little context…">' + escapeText(item.message || "") + '</textarea></div></div>';
+        return '<div class="p-extra-page-editor"><h3>Extra question page ' + (index + 2 + pageOffset) + '</h3><div class="p-field"><label>Question</label><input data-extra-question maxlength="180" placeholder="What else would you like to ask?" value="' + escapeText(item.question || "") + '"></div><div class="p-field"><label>Message (optional)</label><textarea data-extra-message maxlength="500" rows="2" placeholder="Add a little context…">' + escapeText(item.message || "") + '</textarea></div></div>';
       }).join("");
       pageEditor.querySelectorAll("input,textarea").forEach(el => el.addEventListener("input", renderDraft));
       renderDraft();
     }
     pageCount?.addEventListener("change", renderExtraPageEditors);
+    photoInput?.addEventListener("change", () => {
+      const files = Array.from(photoInput.files || []);
+      if (files.some(file => !ALLOWED_PHOTO_TYPES.has(file.type) || file.size > MAX_PHOTO_BYTES)) {
+        releasePhotoPreviews();
+        selectedPhotos = [];
+        photoInput.value = "";
+        renderPhotoEditor();
+        updatePageCountLabels();
+        renderExtraPageEditors();
+        notice("Use JPG, PNG, or WebP photos, with each file no larger than 5 MB.", "error");
+        return;
+      }
+      releasePhotoPreviews();
+      selectedPhotos = files.slice(0, MAX_PROPOSAL_PHOTOS).map(file => ({
+        file,
+        caption: "",
+        previewUrl: URL.createObjectURL(file)
+      }));
+      renderPhotoEditor();
+      updatePageCountLabels();
+      renderExtraPageEditors();
+      if (files.length > MAX_PROPOSAL_PHOTOS) {
+        notice("Only the first 5 photos were selected. You can remove any photo before publishing.", "success");
+      }
+    });
+
     $$("[data-p-theme]").forEach(btn => {
       btn.setAttribute("aria-pressed", String(btn.dataset.pTheme === theme));
       btn.addEventListener("click", () => {
@@ -501,13 +569,16 @@
     function renderDraft() {
       const d = draft();
       const preview = $("#create-preview");
-      preview.innerHTML = cardMarkup({ ...d, status: "published" });
+      const photoGallery = selectedPhotos.map(photo => ({ url: photo.previewUrl, caption: photo.caption }));
+      preview.innerHTML = cardMarkup({ ...d, photo_gallery: photoGallery, status: "published" });
       initRomanticScene(preview);
       initQuestionPages(preview);
+      initPhotoGallery(preview);
       $("#recipient-yes", preview).disabled = true;
       $("#recipient-no", preview).disabled = true;
     }
     form.addEventListener("input", event => {
+      if (event.target.closest("#photo-selection-preview")) return;
       if (!event.target.closest("#proposal-ideas")) ideaButtons.forEach(b => { b.classList.remove("is-selected"); b.setAttribute("aria-pressed", "false"); });
       renderDraft();
     });
@@ -517,19 +588,44 @@
       const payload = draft();
       const missingPage = payload.question_pages.findIndex(page => !page.question);
       if (missingPage !== -1) {
-        notice("Please enter a question for extra page " + (missingPage + 2) + " or reduce the number of extra pages.", "error");
+        const offset = selectedPhotos.length ? 1 : 0;
+        notice("Please enter a question for extra question page " + (missingPage + 2 + offset) + " or reduce the number of extra pages.", "error");
         return;
       }
       submit.disabled = true;
+      const originalLabel = submit.textContent;
+      submit.textContent = selectedPhotos.length ? "Uploading your photos…" : "Publishing…";
+      let createdId = null;
       try {
-        const id = await createProposal(payload);
-        location.href = "dashboard.html?created=" + encodeURIComponent(id);
+        if (selectedPhotos.length) {
+          if (!configured || !client || !currentUser) throw new Error("Please sign in before publishing photos.");
+          const schemaCheck = await client.from("proposals").select("photo_gallery").limit(1);
+          if (schemaCheck.error) {
+            if (isMissingPhotoColumn(schemaCheck.error)) {
+              throw new Error("Photo sharing needs one-time setup. Run add-proposal-photos.sql in your Supabase SQL Editor, then try again.");
+            }
+            throw schemaCheck.error;
+          }
+        }
+        createdId = await createProposal(payload);
+        if (selectedPhotos.length) {
+          try {
+            await uploadProposalPhotos(createdId, selectedPhotos);
+          } catch (uploadError) {
+            try { await deleteProposal(createdId); }
+            catch (_) { throw new Error((uploadError.message || "Photo upload failed.") + " Cleanup also failed, so please check your dashboard before publishing again."); }
+            throw uploadError;
+          }
+        }
+        location.href = "dashboard.html?created=" + encodeURIComponent(createdId);
       } catch (error) {
         notice(error.message || "Could not publish this proposal.", "error");
       } finally {
         submit.disabled = false;
+        submit.textContent = originalLabel;
       }
     });
+    updatePageCountLabels();
     renderDraft();
   }
   async function initDashboard() {
