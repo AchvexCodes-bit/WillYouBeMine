@@ -22,6 +22,11 @@
   const demoKey = "wybm-demo-proposals-v1";
   const demoResponseKey = "wybm-demo-responses-v1";
   const query = new URLSearchParams(location.search);
+  const PHOTO_BUCKET = "proposal-photos";
+  const MAX_PROPOSAL_PHOTOS = 5;
+  const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+  const PHOTO_URL_TTL_SECONDS = 15 * 60;
+  const ALLOWED_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
   function escapeText(value) {
     return String(value == null ? "" : value).replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
@@ -61,6 +66,76 @@
     if (!value) return "Just now";
     try { return new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }); }
     catch (_) { return value; }
+  }
+  function isMissingPhotoColumn(error) {
+    const message = String(error && error.message || "").toLowerCase();
+    return message.includes("photo_gallery") && (
+      error.code === "42703" ||
+      error.code === "PGRST204" ||
+      message.includes("does not exist") ||
+      message.includes("schema cache") ||
+      message.includes("could not find")
+    );
+  }
+  function photoExtension(file) {
+    return file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "";
+  }
+  async function resolveProposalPhotos(proposal) {
+    const photos = Array.isArray(proposal && proposal.photo_gallery) ? proposal.photo_gallery.slice(0, MAX_PROPOSAL_PHOTOS) : [];
+    if (!photos.length) return [];
+    const resolved = await Promise.all(photos.map(async photo => {
+      if (!photo) return null;
+      if (photo.url && !photo.path) return photo;
+      if (!photo.path || !configured) return null;
+      try {
+        if (!client) await initSupabase();
+        if (!client) return null;
+        const result = await client.storage.from(PHOTO_BUCKET).createSignedUrl(photo.path, PHOTO_URL_TTL_SECONDS);
+        if (result.error || !result.data || !result.data.signedUrl) return null;
+        return { ...photo, url: result.data.signedUrl };
+      } catch (_) {
+        // A missing/expired image should never stop the proposal's Yes/No flow.
+        return null;
+      }
+    }));
+    return resolved.filter(photo => photo && photo.url);
+  }
+  async function uploadProposalPhotos(proposalId, selectedPhotos) {
+    if (!client || !currentUser) throw new Error("Please sign in again before uploading photos.");
+    const uploaded = [];
+    try {
+      for (let index = 0; index < selectedPhotos.length; index++) {
+        const item = selectedPhotos[index];
+        const extension = photoExtension(item.file);
+        if (!extension || !ALLOWED_PHOTO_TYPES.has(item.file.type)) {
+          throw new Error("Only JPG, PNG, and WebP photos are supported.");
+        }
+        if (item.file.size > MAX_PHOTO_BYTES) {
+          throw new Error("Each photo must be 5 MB or smaller.");
+        }
+        const path = currentUser.id + "/" + proposalId + "/" + (index + 1) + "-" + makeId() + "." + extension;
+        const result = await client.storage.from(PHOTO_BUCKET).upload(path, item.file, {
+          cacheControl: "3600",
+          contentType: item.file.type,
+          upsert: false
+        });
+        if (result.error) throw result.error;
+        uploaded.push({ path, caption: String(item.caption || "").trim().slice(0, 120) });
+      }
+      const saved = await client.from("proposals")
+        .update({ photo_gallery: uploaded })
+        .eq("id", proposalId)
+        .eq("owner_id", currentUser.id);
+      if (saved.error) throw saved.error;
+      return uploaded;
+    } catch (error) {
+      if (uploaded.length) {
+        try { await client.storage.from(PHOTO_BUCKET).remove(uploaded.map(photo => photo.path)); }
+        catch (_) { /* Keep the original upload error; the bucket policies also restrict access. */ }
+      }
+      const detail = error && error.message ? error.message : "Please check the Supabase photo setup.";
+      throw new Error("Photo upload failed: " + detail);
+    }
   }
   async function initSupabase() {
     if (!configured) return null;
