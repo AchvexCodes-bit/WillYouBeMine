@@ -17,10 +17,13 @@ The homepage's standalone builder works without a backend and can export a self-
 
 1. Create a free project at https://supabase.com.
 2. Run `supabase-schema.sql` in the Supabase SQL Editor.
-3. In Supabase Project Settings / API, copy the Project URL and public anon/publishable key.
-4. Add those two values to `config.js` as `supabaseUrl` and `supabaseAnonKey`. Never use the service-role key in client-side code.
-5. Enable email/password authentication. Set the Site URL and allowed redirect URLs to your deployed domain.
-6. Deploy the repository as a static site. Redeploy after changing `config.js`.
+3. Run `add-proposal-photos.sql` in the same SQL Editor to enable the optional photo gallery. This migration is repeatable and is required for existing projects as well as fresh projects.
+4. In Supabase Project Settings / API, copy the Project URL and public anon/publishable key.
+5. Add those two values to `config.js` as `supabaseUrl` and `supabaseAnonKey`. Never use the service-role key in client-side code.
+6. Enable email/password authentication. Set the Site URL and allowed redirect URLs to your deployed domain.
+7. Deploy the repository as a static site. Redeploy after changing `config.js`.
+
+The creator can optionally add up to five JPG, PNG, or WebP photos (maximum 5 MB each) with captions. Photos appear as a separate page between the fixed introduction and the extra questions. The gallery uses a private Storage bucket and short-lived signed URLs; photo access is restricted to published proposals within the existing 15-day lifetime. Deleting a proposal from the dashboard also attempts to remove its stored photos.
 
 After setup, a creator signs up, publishes a proposal, and copies its unique link from the dashboard. The recipient opens the link on another device without signing in, chooses an answer, and may leave a note. The response is stored and appears in the creator's inbox. Each creator's dashboard and responses are restricted with row-level security policies.
 
