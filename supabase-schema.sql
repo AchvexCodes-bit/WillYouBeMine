@@ -12,6 +12,7 @@ create table if not exists public.proposals (
   theme text not null default 'sweet' check (theme in ('sweet','midnight','playful')),
   question_pages jsonb not null default '[]'::jsonb check (jsonb_typeof(question_pages) = 'array' and jsonb_array_length(question_pages) <= 3),
   dodge_no boolean not null default false,
+  custom_options jsonb not null default '{}'::jsonb check (jsonb_typeof(custom_options) = 'object'),
   status text not null default 'published' check (status in ('published','archived')),
   created_at timestamptz not null default now()
 );
@@ -108,3 +109,6 @@ select cron.schedule(
   '17 * * * *',
   $job$delete from public.proposals where created_at <= now() - interval '15 days';$job$
 );
+
+-- Safe upgrade for projects created before the extra appearance controls.
+alter table public.proposals add column if not exists custom_options jsonb not null default '{}'::jsonb;
