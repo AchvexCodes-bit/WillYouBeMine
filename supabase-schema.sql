@@ -28,6 +28,16 @@ create table if not exists public.proposal_responses (
 alter table public.proposals enable row level security;
 alter table public.proposal_responses enable row level security;
 
+-- Keep policy setup repeatable when this schema is rerun for an existing project.
+drop policy if exists "Owners can view their proposals" on public.proposals;
+drop policy if exists "Owners can create proposals" on public.proposals;
+drop policy if exists "Owners can delete proposals" on public.proposals;
+drop policy if exists "Anyone can view published proposals" on public.proposals;
+drop policy if exists "Anyone can view unexpired published proposals" on public.proposals;
+drop policy if exists "Anyone can answer published proposals" on public.proposal_responses;
+drop policy if exists "Anyone can answer unexpired published proposals" on public.proposal_responses;
+drop policy if exists "Owners can read responses" on public.proposal_responses;
+
 -- Creators can manage only their own proposals.
 create policy "Owners can view their proposals" on public.proposals
   for select to authenticated using (auth.uid() = owner_id);
@@ -88,7 +98,7 @@ create policy "Anyone can answer unexpired published proposals" on public.propos
     )
   );
 
--- Remove expired proposals daily; response rows are removed by ON DELETE CASCADE.
+-- Remove expired proposals hourly; response rows are removed by ON DELETE CASCADE.
 select cron.unschedule(jobid)
 from cron.job
 where jobname = 'wybm-delete-expired-proposals';
