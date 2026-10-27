@@ -197,7 +197,13 @@
   async function fetchProposal(id) {
     if (configured) {
       if (!client) await initSupabase();
-      const result = await client.from("proposals").select("id,creator_name,recipient_name,question,message,yes_text,theme,status,created_at,question_pages,dodge_no").eq("id", id).eq("status", "published").maybeSingle();
+      const fields = "id,creator_name,recipient_name,question,message,yes_text,theme,status,created_at,question_pages,dodge_no";
+      let result = await client.from("proposals").select(fields + ",photo_gallery").eq("id", id).eq("status", "published").maybeSingle();
+      if (result.error && isMissingPhotoColumn(result.error)) {
+        // Backward compatibility: an existing deployment remains usable until the photo migration is run.
+        result = await client.from("proposals").select(fields).eq("id", id).eq("status", "published").maybeSingle();
+        if (!result.error && result.data) result.data.photo_gallery = [];
+      }
       if (result.error) throw result.error;
       return result.data;
     }
@@ -253,7 +259,18 @@
   async function deleteProposal(id) {
     if (configured) {
       if (!client) await initSupabase();
-      const result = await client.from("proposals").delete().eq("id", id);
+      // Remove stored images before removing the parent row, while the owner-scoped
+      // Storage delete policy can still confirm that this account owns the proposal.
+      const gallery = await client.from("proposals").select("photo_gallery").eq("id", id).eq("owner_id", currentUser.id).maybeSingle();
+      if (gallery.error && !isMissingPhotoColumn(gallery.error)) throw gallery.error;
+      const paths = gallery.data && Array.isArray(gallery.data.photo_gallery)
+        ? gallery.data.photo_gallery.map(photo => photo && photo.path).filter(Boolean)
+        : [];
+      if (paths.length) {
+        const removed = await client.storage.from(PHOTO_BUCKET).remove(paths);
+        if (removed.error) throw new Error("Could not remove this proposal's photos: " + removed.error.message);
+      }
+      const result = await client.from("proposals").delete().eq("id", id).eq("owner_id", currentUser.id);
       if (result.error) throw result.error;
       return;
     }
