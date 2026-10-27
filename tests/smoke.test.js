@@ -104,7 +104,7 @@ test("extra pages are capped, validated, persisted, and navigable in preview and
   const createPage = fs.readFileSync(path.join(root, "create.html"), "utf8");
   const schema = fs.readFileSync(path.join(root, "supabase-schema.sql"), "utf8");
   assert.match(createPage, /id="extra-page-count"/);
-  assert.match(createPage, /option value="3">3 extra pages \(4 total\)/);
+  assert.match(createPage, /option value="3">3 extra question pages \(5 total\)/);
   assert.match(createPage, /id="dodge-no"/);
   assert.match(portal, /Math\.min\(3, Number\(pageCount\.value\)/);
   assert.match(portal, /question_pages:\s*\$\$\("\.p-extra-page-editor"\)\.slice\(0, 3\)/);
