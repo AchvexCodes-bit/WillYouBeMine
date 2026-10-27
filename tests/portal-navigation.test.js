@@ -147,3 +147,85 @@ test("recipient name and note controls stay hidden until the final proposal page
   assert.ok(append > finalPage, "the details are appended inside the final proposal page");
   assert.doesNotMatch(proposalInit, /root\.querySelector\("\.p-card"\)\.appendChild\(extra\)/);
 });
+
+
+test("photo gallery is an optional navigation page between the fixed intro and extra questions", () => {
+  const cardFn = extractFunction(portal, "cardMarkup");
+  const themes = {
+    sweet: { greeting: "Hey, you.", note: "A little note", no: "Maybe later" },
+    midnight: { greeting: "Under these stars,", note: "A little note", no: "Let me think" },
+    playful: { greeting: "Okay, so listen…", note: "A little note", no: "Not today!" }
+  };
+  const cardMarkup = vm.runInNewContext("(" + cardFn + ")", {
+    themes,
+    escapeText: value => String(value == null ? "" : value),
+    MAX_PROPOSAL_PHOTOS: 5
+  });
+
+  const noPhotos = cardMarkup({ theme: "sweet", question: "Will you be my person?", question_pages: [] });
+  assert.doesNotMatch(noPhotos, /p-photo-question-page/);
+  assert.match(noPhotos, /data-question-page="0"/);
+  assert.match(noPhotos, /p-main-question-page" data-question-page="1"/);
+  assert.match(noPhotos, /PAGE 2 OF 2/);
+
+  const withPhotos = cardMarkup({
+    theme: "sweet",
+    question: "Will you be my person?",
+    question_pages: [{ question: "One more question", message: "" }],
+    photo_gallery: [{ url: "blob:test-photo", caption: "Our first memory" }]
+  });
+  const introAt = withPhotos.indexOf("p-intro-question-page");
+  const photoAt = withPhotos.indexOf("p-photo-question-page");
+  const extraAt = withPhotos.indexOf("p-extra-question-page");
+  const mainAt = withPhotos.indexOf("p-main-question-page");
+  assert.ok(introAt >= 0 && photoAt > introAt && extraAt > photoAt && mainAt > extraAt);
+  assert.match(withPhotos, /data-question-page="1" hidden/);
+  assert.match(withPhotos, /data-question-page="2" hidden/);
+  assert.match(withPhotos, /data-question-page="3" hidden/);
+  assert.match(withPhotos, /Our first memory/);
+  assert.match(withPhotos, /PAGE 4 OF 4/);
+
+  const fivePhotoGallery = cardMarkup({
+    theme: "sweet",
+    question_pages: [{ question: "1" }, { question: "2" }, { question: "3" }],
+    photo_gallery: Array.from({ length: 7 }, (_, i) => ({ url: "blob:" + i, caption: "" }))
+  });
+  assert.equal((fivePhotoGallery.match(/data-photo-open/g) || []).length, 5);
+  assert.match(fivePhotoGallery, /PAGE 6 OF 6/);
+});
+
+test("creator provides bounded optional image selection and accessible caption controls", () => {
+  const root = path.join(__dirname, "..");
+  const createPage = fs.readFileSync(path.join(root, "create.html"), "utf8");
+  const portalCss = fs.readFileSync(path.join(root, "portal.css"), "utf8");
+  assert.match(createPage, /id="proposal-photos" type="file" accept="image\/jpeg,image\/png,image\/webp" multiple/);
+  assert.match(createPage, /id="photo-selection-preview"/);
+  assert.match(portal, /MAX_PROPOSAL_PHOTOS = 5/);
+  assert.match(portal, /MAX_PHOTO_BYTES = 5 \* 1024 \* 1024/);
+  assert.match(portal, /ALLOWED_PHOTO_TYPES = new Set\\(\\["image\/jpeg", "image\/png", "image\/webp"\\]\\)/);
+  assert.match(portal, /data-photo-caption/);
+  assert.match(portal, /URL\\.createObjectURL/);
+  assert.match(portalCss, /\\.p-photo-question-page\\[hidden\\]/);
+  assert.match(portalCss, /\\.p-main-question-page\\[hidden\\]/);
+  assert.match(portalCss, /\\.p-photo-lightbox::backdrop/);
+});
+
+test("photo storage migration is private, owner-scoped, type-limited, and expiry-aware", () => {
+  const migration = fs.readFileSync(path.join(__dirname, "..", "add-proposal-photos.sql"), "utf8");
+  assert.match(migration, /add column if not exists photo_gallery jsonb/i);
+  assert.match(migration, /'proposal-photos',[\\s\\S]*false,[\\s\\S]*5242880,[\\s\\S]*image\\/jpeg[\\s\\S]*image\\/png[\\s\\S]*image\\/webp/i);
+  assert.match(migration, /Proposal photos readable for active proposals/);
+  assert.match(migration, /p\\.created_at > now\\(\\) - interval '15 days'/);
+  assert.match(migration, /Proposal owners can upload photos/);
+  assert.match(migration, /Proposal owners can delete photos/);
+  assert.match(migration, /grant update on public\\.proposals to authenticated/i);
+});
+
+test("photo storage upload failures are rolled back and old databases fall back without photo support", () => {
+  assert.match(portal, /Photo sharing needs one-time setup/);
+  assert.match(portal, /Photo upload failed:/);
+  assert.match(portal, /isMissingPhotoColumn\\(result\\.error\\)/);
+  assert.match(portal, /client\\.storage\\.from\\(PHOTO_BUCKET\\)\\.remove/);
+  assert.match(portal, /createSignedUrl\\(photo\\.path, PHOTO_URL_TTL_SECONDS\\)/);
+  assert.match(portal, /A missing\\/expired image should never stop the proposal's Yes\\/No flow/);
+});
