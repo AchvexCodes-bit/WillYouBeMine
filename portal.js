@@ -17,6 +17,10 @@
     relationship: { question: "Will you make this official with me?", message: "You have become someone really special to me. I want to see where this story goes, together, one little moment at a time. 💌", yes: "Let us do this! ♥", theme: "sweet" },
     anniversary: { question: "Shall we make another beautiful memory together?", message: "Every chapter with you is one I want to remember. Here are the moments we have shared and all the ones still waiting for us. ✨", yes: "Always with you! ♥", theme: "midnight" },
     longdistance: { question: "Even miles apart, will you keep choosing us?", message: "The distance is not always easy, but you are worth every call, every countdown, and every mile between us. One day closer to our next hug. 🌙", yes: "Always choosing us ♥", theme: "midnight" },
+    firstdate: { question: "Would you go on our first date with me?", message: "I would love to get to know you better, hear your stories, and turn an ordinary day into a lovely memory. ☕", yes: "Let's make a memory! ♥", theme: "sweet" },
+    prom: { question: "Would you make this special night even better and go with me?", message: "There's one person I'd love to share this moment with — you. What do you say? ✨", yes: "Let's go together! ♥", theme: "playful" },
+    apology: { question: "Can we talk and try to make things right?", message: "I know words can't fix everything, but I want to listen, take responsibility, and make room for an honest conversation. 🌷", yes: "Let's talk ♥", theme: "sweet" },
+    justbecause: { question: "Can I make your day a little more special?", message: "No big occasion needed. I just wanted to remind you that you matter to me and you make life a little brighter. 💗", yes: "Of course! ♥", theme: "playful" },
     custom: { question: "", message: "", yes: "Yes, absolutely! ♥", theme: "sweet" }
   };
   const demoKey = "wybm-demo-proposals-v1";
@@ -70,6 +74,16 @@
   function isMissingPhotoColumn(error) {
     const message = String(error && error.message || "").toLowerCase();
     return message.includes("photo_gallery") && (
+      error.code === "42703" ||
+      error.code === "PGRST204" ||
+      message.includes("does not exist") ||
+      message.includes("schema cache") ||
+      message.includes("could not find")
+    );
+  }
+  function isMissingCustomOptionsColumn(error) {
+    const message = String(error && error.message || "").toLowerCase();
+    return message.includes("custom_options") && (
       error.code === "42703" ||
       error.code === "PGRST204" ||
       message.includes("does not exist") ||
@@ -435,14 +449,26 @@
   async function fetchProposal(id) {
     if (configured) {
       if (!client) await initSupabase();
-      const fields = "id,creator_name,recipient_name,question,message,yes_text,theme,status,created_at,question_pages,dodge_no";
-      let result = await client.from("proposals").select(fields + ",photo_gallery").eq("id", id).eq("status", "published").maybeSingle();
-      if (result.error && isMissingPhotoColumn(result.error)) {
-        // Backward compatibility: an existing deployment remains usable until the photo migration is run.
-        result = await client.from("proposals").select(fields).eq("id", id).eq("status", "published").maybeSingle();
-        if (!result.error && result.data) result.data.photo_gallery = [];
+      let fields = "id,creator_name,recipient_name,question,message,yes_text,theme,status,created_at,question_pages,dodge_no,custom_options";
+      let includePhotos = true;
+      let result = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        const selectedFields = fields + (includePhotos ? ",photo_gallery" : "");
+        result = await client.from("proposals").select(selectedFields).eq("id", id).eq("status", "published").maybeSingle();
+        if (!result.error) break;
+        if (includePhotos && isMissingPhotoColumn(result.error)) {
+          includePhotos = false;
+          continue;
+        }
+        if (fields.includes(",custom_options") && isMissingCustomOptionsColumn(result.error)) {
+          fields = fields.replace(",custom_options", "");
+          continue;
+        }
+        break;
       }
       if (result.error) throw result.error;
+      if (result.data && !includePhotos) result.data.photo_gallery = [];
+      if (result.data && !fields.includes("custom_options")) result.data.custom_options = {};
       return result.data;
     }
     return demoProposals().find(p => p.id === id && p.status === "published") || null;
@@ -452,15 +478,24 @@
       if (!client) await initSupabase();
       if (!client) throw new Error("Publishing is unavailable. Check the Supabase setup in config.js.");
       if (!currentUser) throw new Error("Please sign in before publishing.");
-      const result = await client.from("proposals").insert({ ...payload, owner_id: currentUser.id, status: "published" }).select("id").single();
+      const insertPayload = { ...payload, owner_id: currentUser.id, status: "published" };
+      let result = await client.from("proposals").insert(insertPayload).select("id").single();
+      if (result.error && isMissingCustomOptionsColumn(result.error) && Object.prototype.hasOwnProperty.call(insertPayload, "custom_options")) {
+        // Keep publishing functional on older Supabase schemas; send a clear upgrade notice after redirect.
+        const legacyPayload = { ...insertPayload };
+        delete legacyPayload.custom_options;
+        result = await client.from("proposals").insert(legacyPayload).select("id").single();
+        if (result.error) throw result.error;
+        return { id: result.data.id, customizationSaved: false };
+      }
       if (result.error) throw result.error;
-      return result.data.id;
+      return { id: result.data.id, customizationSaved: true };
     }
     const id = makeId();
     const list = demoProposals();
     list.unshift({ ...payload, id, owner_id: "demo", status: "published", created_at: new Date().toISOString() });
     saveDemoProposals(list);
-    return id;
+    return { id, customizationSaved: true };
   }
   async function listMyProposals() {
     if (configured) {
@@ -553,7 +588,15 @@
 
   function cardMarkup(p) {
     const theme = themes[p.theme] || themes.sweet;
-    const greeting = p.recipient_name ? "Hey, " + p.recipient_name + "." : theme.greeting;
+    const customOptions = p.custom_options && typeof p.custom_options === "object" ? p.custom_options : {};
+    const accents = new Set(["rose", "lavender", "ocean", "sage", "gold"]);
+    const fonts = new Set(["serif", "sans", "classic"]);
+    const accent = accents.has(customOptions.accent_color) ? customOptions.accent_color : "rose";
+    const font = fonts.has(customOptions.font_style) ? customOptions.font_style : "serif";
+    const effects = customOptions.effects !== false;
+    const customGreeting = String(customOptions.greeting || "").trim().slice(0, 80);
+    const customNoText = String(customOptions.no_text || "").trim().slice(0, 40);
+    const greeting = customGreeting || (p.recipient_name ? "Hey, " + p.recipient_name + "." : theme.greeting);
     const questionPages = Array.isArray(p.question_pages) ? p.question_pages.slice(0, 3) : [];
     const photos = Array.isArray(p.photo_gallery) ? p.photo_gallery.filter(photo => photo && (photo.url || photo.path)).slice(0, MAX_PROPOSAL_PHOTOS) : [];
     const photoOffset = photos.length ? 1 : 0;
@@ -569,7 +612,7 @@
           (photo.caption ? '<figcaption class="p-photo-caption">' + escapeText(photo.caption) + '</figcaption>' : '') + '</figure>').join("") +
         '</div></section><dialog class="p-photo-lightbox" aria-label="Expanded photo"><button type="button" class="p-photo-lightbox-close" aria-label="Close photo">×</button><img src="" alt="Expanded memory"><p class="p-photo-lightbox-caption"></p></dialog>'
       : "";
-    return '<div class="p-card" data-theme="' + escapeText(p.theme || "sweet") + '" data-dodge-no="' + (p.dodge_no ? "true" : "false") + '">' +
+    return '<div class="p-card" data-theme="' + escapeText(p.theme || "sweet") + '" data-accent="' + accent + '" data-font="' + font + '" data-effects="' + (effects ? "true" : "false") + '" data-dodge-no="' + (p.dodge_no ? "true" : "false") + '">' +
       '<div class="p-card-top"><span>A LITTLE MOMENT FOR YOU</span><span>♥</span></div>' +
       '<div class="p-card-art"><span class="p-card-orb"></span><span class="p-card-heart">♥</span></div>' +
       '<p class="p-card-greeting">' + escapeText(greeting) + '</p>' +
@@ -585,7 +628,7 @@
       '<p class="p-page-count">PAGE ' + totalPages + ' OF ' + totalPages + '</p>' +
       '<h1 class="p-card-question">' + escapeText(p.question || "Will you be my person?") + '</h1><p class="p-card-message">' + escapeText(p.message || theme.note) + '</p></section>' +
       '<div class="p-page-navigation"><button type="button" class="p-page-back" disabled>← Back</button><button type="button" class="p-page-next">Next →</button></div>' +
-      '<div class="p-card-actions" hidden><button class="p-card-yes" id="recipient-yes">' + escapeText(p.yes_text || "Yes, absolutely! ♥") + '</button><button class="p-card-no" id="recipient-no">' + escapeText(theme.no) + '</button></div>' +
+      '<div class="p-card-actions" hidden><button class="p-card-yes" id="recipient-yes">' + escapeText(p.yes_text || "Yes, absolutely! ♥") + '</button><button class="p-card-no" id="recipient-no">' + escapeText(customNoText || theme.no) + '</button></div>' +
       '<p class="p-card-response" id="recipient-feedback" aria-live="polite"></p>' +
       '<div class="p-card-foot"><span>MADE WITH A LITTLE NERVE</span><span>♡ JUST FOR YOU</span></div></div>';
   }
@@ -594,6 +637,7 @@
     if (!card || card.dataset.sceneReady === "true") return;
     card.dataset.sceneReady = "true";
     card.classList.add("p-romantic-scene");
+    if (card.dataset.effects === "false") return;
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const art = card.querySelector(".p-card-art");
     if (art) {
@@ -820,8 +864,15 @@
         message: $("#message").value.trim().slice(0, 1000),
         yes_text: $("#yes-text").value.trim().slice(0, 60) || "Yes, absolutely! ♥",
         theme,
-        question_pages: $$(".p-extra-page-editor").slice(0, 3).map(el => ({ question: $("[data-extra-question]", el).value.trim().slice(0, 180), message: $("[data-extra-message]", el).value.trim().slice(0, 500) })),
-        dodge_no: Boolean($("#dodge-no") && $("#dodge-no").checked)
+        question_pages: $(".p-extra-page-editor").slice(0, 3).map(el => ({ question: $("[data-extra-question]", el).value.trim().slice(0, 180), message: $("[data-extra-message]", el).value.trim().slice(0, 500) })),
+        dodge_no: Boolean($("#dodge-no") && $("#dodge-no").checked),
+        custom_options: {
+          greeting: ($("#custom-greeting")?.value || "").trim().slice(0, 80),
+          no_text: ($("#no-text")?.value || "").trim().slice(0, 40),
+          accent_color: $("#accent-color")?.value || "rose",
+          font_style: $("#font-style")?.value || "serif",
+          effects: $("#romantic-effects") ? $("#romantic-effects").checked : true
+        }
       };
     }
     function renderDraft() {
@@ -854,6 +905,7 @@
       const originalLabel = submit.textContent;
       submit.textContent = selectedPhotos.length ? "Uploading your photos…" : "Publishing…";
       let createdId = null;
+      let customizationSaved = true;
       try {
         if (selectedPhotos.length) {
           if (!configured || !client || !currentUser) throw new Error("Please sign in before publishing photos.");
@@ -865,7 +917,9 @@
             throw schemaCheck.error;
           }
         }
-        createdId = await createProposal(payload);
+        const created = await createProposal(payload);
+        createdId = created.id;
+        customizationSaved = created.customizationSaved;
         if (selectedPhotos.length) {
           try {
             await uploadProposalPhotos(createdId, selectedPhotos);
@@ -875,7 +929,7 @@
             throw uploadError;
           }
         }
-        location.href = "dashboard.html?created=" + encodeURIComponent(createdId);
+        location.href = "dashboard.html?created=" + encodeURIComponent(createdId) + (customizationSaved ? "" : "&customization-upgrade-needed=1");
       } catch (error) {
         notice(error.message || "Could not publish this proposal.", "error");
       } finally {
@@ -920,6 +974,9 @@
       $("#stat-answers").textContent = String(responses.length);
       $("#stat-open").textContent = String(proposals.filter(p => p.status === "published").length);
       const createdId = query.get("created");
+      if (query.get("customization-upgrade-needed") === "1") {
+        notice("Your proposal was published, but its new greeting, accent, font, and motion settings were not saved because this Supabase table needs an update. Run customize-proposals.sql in the Supabase SQL Editor, then publish again.", "error");
+      }
       const createdProposal = createdId ? proposals.find(p => p.id === createdId) : null;
       $("#created-link-banner")?.remove();
       if (createdProposal) {
