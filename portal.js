@@ -260,6 +260,91 @@
     }
   }
 
+  async function optimizeExistingProposalPhotos(proposalId) {
+    if (!client || !currentUser) throw new Error("Please sign in before optimizing photos.");
+    const lookup = await client.from("proposals")
+      .select("id,photo_gallery")
+      .eq("id", proposalId)
+      .eq("owner_id", currentUser.id)
+      .maybeSingle();
+    if (lookup.error) {
+      if (isMissingPhotoColumn(lookup.error)) {
+        throw new Error("Photo storage setup is missing. Run add-proposal-photos.sql in Supabase first.");
+      }
+      throw lookup.error;
+    }
+    if (!lookup.data) throw new Error("This proposal is not available in your account.");
+    const gallery = Array.isArray(lookup.data.photo_gallery) ? lookup.data.photo_gallery.slice(0, MAX_PROPOSAL_PHOTOS) : [];
+    if (!gallery.length) return { optimized: 0, total: 0 };
+    const storage = client.storage.from(PHOTO_BUCKET);
+    const uploadedPaths = [];
+    const oldPaths = [];
+    const nextGallery = [];
+    let optimizedCount = 0;
+    let metadataSaved = false;
+    try {
+      for (const photo of gallery) {
+        if (!photo || !photo.path) {
+          nextGallery.push(photo);
+          continue;
+        }
+        const downloaded = await storage.download(photo.path);
+        if (downloaded.error || !downloaded.data) {
+          throw downloaded.error || new Error("Could not download an existing photo.");
+        }
+        const extension = String(photo.path).split(".").pop().toLowerCase();
+        const inferredType = extension === "jpg" || extension === "jpeg" ? "image/jpeg" :
+          extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : "";
+        const type = ALLOWED_PHOTO_TYPES.has(downloaded.data.type) ? downloaded.data.type : inferredType;
+        if (!ALLOWED_PHOTO_TYPES.has(type)) {
+          throw new Error("An existing gallery photo has an unsupported format. Please replace it with JPG, PNG, or WebP.");
+        }
+        const sourceFile = new File([downloaded.data], "existing-photo." + (type === "image/jpeg" ? "jpg" : type === "image/png" ? "png" : "webp"), {
+          type,
+          lastModified: Date.now()
+        });
+        const optimized = await prepareOptimizedPhoto(sourceFile);
+        if (optimized === sourceFile) {
+          nextGallery.push(photo);
+          continue;
+        }
+        const newPath = currentUser.id + "/" + proposalId + "/optimized-" + makeId() + "." + photoExtension(optimized);
+        const uploaded = await storage.upload(newPath, optimized, {
+          cacheControl: "3600",
+          contentType: optimized.type,
+          upsert: false
+        });
+        if (uploaded.error) throw uploaded.error;
+        uploadedPaths.push(newPath);
+        oldPaths.push(photo.path);
+        nextGallery.push({ path: newPath, caption: String(photo.caption || "").slice(0, 120) });
+        optimizedCount++;
+      }
+
+      if (!optimizedCount) return { optimized: 0, total: gallery.length };
+      const saved = await client.from("proposals")
+        .update({ photo_gallery: nextGallery })
+        .eq("id", proposalId)
+        .eq("owner_id", currentUser.id);
+      if (saved.error) throw saved.error;
+      metadataSaved = true;
+
+      // The new gallery is live now; cleanup of old files is best-effort and won't break it.
+      let cleanupWarning = false;
+      if (oldPaths.length) {
+        const removed = await storage.remove(oldPaths);
+        cleanupWarning = Boolean(removed.error);
+      }
+      return { optimized: optimizedCount, total: gallery.length, cleanupWarning };
+    } catch (error) {
+      if (!metadataSaved && uploadedPaths.length) {
+        try { await storage.remove(uploadedPaths); }
+        catch (_) { /* Preserve the original error. */ }
+      }
+      throw new Error("Could not optimize existing photos: " + (error && error.message ? error.message : "Please try again."));
+    }
+  }
+
   async function cleanupOrphanedProposalPhotos(proposals) {
     if (!client || !currentUser) return;
     try {
