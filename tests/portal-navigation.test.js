@@ -392,3 +392,77 @@ test("gallery signs every photo in one Storage request", async () => {
   assert.ok(resolved.every(photo => photo.url.startsWith("https://storage.example/signed/")));
   assert.deepEqual(resolved.map(photo => photo.caption), ["One", "Two"]);
 });
+
+
+test("dashboard can optimize an existing gallery and update its paths safely", async () => {
+  const optimizerSource = extractFunction(portal, "optimizeExistingProposalPhotos");
+  const ownerId = "11111111-1111-4111-8111-111111111111";
+  const proposalId = "22222222-2222-4222-8222-222222222222";
+  const oldPath = ownerId + "/" + proposalId + "/original.jpg";
+  const oldGallery = [{ path: oldPath, caption: "A memory" }];
+  const uploadedPaths = [];
+  const removedPaths = [];
+  let savedGallery = null;
+  const storage = {
+    async download(path) {
+      assert.equal(path, oldPath);
+      return { data: new Blob([new Uint8Array(600 * 1024)], { type: "image/jpeg" }), error: null };
+    },
+    async upload(path, file, options) {
+      uploadedPaths.push({ path, file, options });
+      return { error: null };
+    },
+    async remove(paths) {
+      removedPaths.push(...paths);
+      return { error: null };
+    }
+  };
+  const query = {
+    select() { return this; },
+    eq() { return this; },
+    async maybeSingle() { return { data: { id: proposalId, photo_gallery: oldGallery }, error: null }; },
+    update(value) {
+      savedGallery = value.photo_gallery;
+      return {
+        eq() { return this; },
+        then(resolve, reject) { return Promise.resolve({ error: null }).then(resolve, reject); }
+      };
+    }
+  };
+  const client = {
+    from(table) { assert.equal(table, "proposals"); return query; },
+    storage: { from(bucket) { assert.equal(bucket, "proposal-photos"); return storage; } }
+  };
+  const optimizer = vm.runInNewContext("(async " + optimizerSource + ")", {
+    client,
+    currentUser: { id: ownerId },
+    MAX_PROPOSAL_PHOTOS: 5,
+    PHOTO_BUCKET: "proposal-photos",
+    ALLOWED_PHOTO_TYPES: new Set(["image/jpeg", "image/png", "image/webp"]),
+    isMissingPhotoColumn: () => false,
+    prepareOptimizedPhoto: async () => new File([new Uint8Array(32 * 1024)], "optimized.webp", { type: "image/webp" }),
+    photoExtension: file => file.type === "image/webp" ? "webp" : file.type === "image/png" ? "png" : "jpg",
+    makeId: () => "compressed-id",
+    File,
+    Blob,
+    Date,
+    String,
+    Promise,
+    Array
+  });
+  const result = await optimizer(proposalId);
+  assert.deepEqual(result, { optimized: 1, total: 1, cleanupWarning: false });
+  assert.equal(uploadedPaths.length, 1);
+  assert.equal(uploadedPaths[0].path, ownerId + "/" + proposalId + "/optimized-compressed-id.webp");
+  assert.equal(uploadedPaths[0].options.contentType, "image/webp");
+  assert.equal(savedGallery[0].path, uploadedPaths[0].path);
+  assert.equal(savedGallery[0].caption, "A memory");
+  assert.deepEqual(removedPaths, [oldPath]);
+});
+
+test("dashboard offers optimization only for proposals with stored photo paths", () => {
+  assert.match(portal, /data-optimize-photos/);
+  assert.match(portal, /optimizeExistingProposalPhotos\(btn\.dataset\.optimizePhotos\)/);
+  assert.match(portal, /select\(fields \+ ",photo_gallery"\)/);
+  assert.match(portal, /const photoCount = Array\.isArray\(p\.photo_gallery\) \? p\.photo_gallery\.filter\(photo => photo && photo\.path\)\.length : 0/);
+});
