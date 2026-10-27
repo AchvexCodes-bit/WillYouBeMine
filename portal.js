@@ -312,7 +312,17 @@
     const theme = themes[p.theme] || themes.sweet;
     const greeting = p.recipient_name ? "Hey, " + p.recipient_name + "." : theme.greeting;
     const questionPages = Array.isArray(p.question_pages) ? p.question_pages.slice(0, 3) : [];
-    const totalPages = questionPages.length + 2;
+    const photos = Array.isArray(p.photo_gallery) ? p.photo_gallery.filter(photo => photo && photo.url).slice(0, MAX_PROPOSAL_PHOTOS) : [];
+    const photoOffset = photos.length ? 1 : 0;
+    const extraStartIndex = photoOffset + 1;
+    const finalPageIndex = questionPages.length + extraStartIndex;
+    const totalPages = finalPageIndex + 1;
+    const photoPage = photos.length
+      ? '<section class="p-photo-question-page" data-question-page="1" hidden><p class="p-page-count">PAGE 2 OF ' + totalPages + '</p><p class="p-fixed-eyebrow">A FEW MEMORIES</p><h2 class="p-card-question">Little moments, kept close.</h2><p class="p-card-message">A few photos to look back on before the big question. ♡</p><div class="p-photo-grid">' +
+        photos.map((photo, index) => '<figure class="p-photo-item"><button type="button" class="p-photo-open" data-photo-open data-photo-url="' + escapeText(photo.url) + '" data-photo-alt="' + escapeText(photo.caption || ("Memory " + (index + 1))) + '" data-photo-caption="' + escapeText(photo.caption || "") + '" aria-label="View photo ' + (index + 1) + ' full size"><img src="' + escapeText(photo.url) + '" alt="' + escapeText(photo.caption || ("Memory " + (index + 1))) + '" loading="lazy"></button>' +
+          (photo.caption ? '<figcaption class="p-photo-caption">' + escapeText(photo.caption) + '</figcaption>' : '') + '</figure>').join("") +
+        '</div></section><dialog class="p-photo-lightbox" aria-label="Expanded photo"><button type="button" class="p-photo-lightbox-close" aria-label="Close photo">×</button><img src="" alt="Expanded memory"><p class="p-photo-lightbox-caption"></p></dialog>'
+      : "";
     return '<div class="p-card" data-theme="' + escapeText(p.theme || "sweet") + '" data-dodge-no="' + (p.dodge_no ? "true" : "false") + '">' +
       '<div class="p-card-top"><span>A LITTLE MOMENT FOR YOU</span><span>♥</span></div>' +
       '<div class="p-card-art"><span class="p-card-orb"></span><span class="p-card-heart">♥</span></div>' +
@@ -323,8 +333,9 @@
       '<h1 class="p-card-question">Before you answer…</h1>' +
       '<p class="p-card-message">Someone made this little page especially for you. Take your time, enjoy each question, and know that every word here was chosen to share a feeling with you. There is no rush and no pressure — just a small moment to read, smile, and be honest with your heart. ♥</p>' +
       '</section>' +
-      (questionPages.length ? questionPages.map((page,index) => '<section class="p-extra-question-page" data-question-page="' + (index+1) + '" hidden><p class="p-page-count">PAGE ' + (index+2) + ' OF ' + totalPages + '</p><h2 class="p-card-question">' + escapeText(page.question || "One more little question…") + '</h2><p class="p-card-message">' + escapeText(page.message || "") + '</p></section>').join("") : '') +
-      '<section class="p-main-question-page" data-question-page="' + (questionPages.length+1) + '" hidden>' +
+      photoPage +
+      (questionPages.length ? questionPages.map((page,index) => '<section class="p-extra-question-page" data-question-page="' + (index + extraStartIndex) + '" hidden><p class="p-page-count">PAGE ' + (index + extraStartIndex + 1) + ' OF ' + totalPages + '</p><h2 class="p-card-question">' + escapeText(page.question || "One more little question…") + '</h2><p class="p-card-message">' + escapeText(page.message || "") + '</p></section>').join("") : '') +
+      '<section class="p-main-question-page" data-question-page="' + finalPageIndex + '" hidden>' +
       '<p class="p-page-count">PAGE ' + totalPages + ' OF ' + totalPages + '</p>' +
       '<h1 class="p-card-question">' + escapeText(p.question || "Will you be my person?") + '</h1><p class="p-card-message">' + escapeText(p.message || theme.note) + '</p></section>' +
       '<div class="p-page-navigation"><button type="button" class="p-page-back" disabled>← Back</button><button type="button" class="p-page-next">Next →</button></div>' +
@@ -364,6 +375,42 @@
     const yes = $("#recipient-yes", card);
     if (yes) yes.addEventListener("pointerenter", () => card.classList.add("p-yes-hover"));
     if (yes) yes.addEventListener("pointerleave", () => card.classList.remove("p-yes-hover"));
+  }
+
+  function initPhotoGallery(root) {
+    const card = root && root.querySelector(".p-card");
+    if (!card) return;
+    const dialog = $(".p-photo-lightbox", card);
+    if (!dialog || dialog.dataset.galleryReady === "true") return;
+    dialog.dataset.galleryReady = "true";
+    const image = $("img", dialog);
+    const caption = $(".p-photo-lightbox-caption", dialog);
+    const closeButton = $(".p-photo-lightbox-close", dialog);
+    function closeDialog() {
+      if (typeof dialog.close === "function" && dialog.open) dialog.close();
+      else dialog.removeAttribute("open");
+    }
+    $$("[data-photo-open]", card).forEach(button => {
+      button.addEventListener("click", () => {
+        if (!image || !button.dataset.photoUrl) return;
+        image.src = button.dataset.photoUrl;
+        image.alt = button.dataset.photoAlt || "Memory";
+        if (caption) caption.textContent = button.dataset.photoCaption || "";
+        if (typeof dialog.showModal === "function") {
+          try { dialog.showModal(); } catch (_) { dialog.setAttribute("open", ""); }
+        } else {
+          dialog.setAttribute("open", "");
+        }
+      });
+    });
+    if (closeButton) closeButton.addEventListener("click", closeDialog);
+    dialog.addEventListener("click", event => {
+      if (event.target === dialog) closeDialog();
+    });
+    dialog.addEventListener("close", () => {
+      if (image) image.removeAttribute("src");
+      if (caption) caption.textContent = "";
+    });
   }
 
   function initQuestionPages(root) {
