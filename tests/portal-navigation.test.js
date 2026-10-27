@@ -226,9 +226,9 @@ test("photo storage upload failures are rolled back and old databases fall back 
   assert.match(portal, /Photo upload failed:/);
   assert.match(portal, /isMissingPhotoColumn\(result\.error\)/);
   assert.match(portal, /client\.storage\.from\(PHOTO_BUCKET\)\.remove/);
-  assert.match(portal, /createSignedUrl\(photo\.path, PHOTO_URL_TTL_SECONDS\)/);
+  assert.match(portal, /storage\.createSignedUrl\(photo\.path, PHOTO_URL_TTL_SECONDS\)/);
   assert.match(portal, /createSignedUrls\(paths, PHOTO_URL_TTL_SECONDS\)/);
-  assert.match(portal, /Photo URL resolution stays separate from initial proposal rendering/);
+  assert.match(portal, /One Storage request for the whole gallery instead of one request per photo/);
 });
 
 
