@@ -976,7 +976,8 @@
       }
       root.innerHTML = proposals.map(p => {
         const count = responses.filter(r => r.proposal_id === p.id).length;
-        return '<article class="p-list-item"><div><span class="p-pill">' + (count ? count + ' response(s)' : 'Waiting for a response') + '</span><h3>' + escapeText(p.recipient_name || "A special person") + '</h3><p>' + escapeText(p.question) + '<br>Created ' + escapeText(dateLabel(p.created_at)) + '</p></div><div class="p-list-actions"><button class="p-button ghost" data-copy="' + escapeText(p.id) + '">Copy link</button><a class="p-button ghost" href="inbox.html?id=' + encodeURIComponent(p.id) + '">View replies</a><button class="p-button ghost" data-delete="' + escapeText(p.id) + '">Delete</button></div></article>';
+        const photoCount = Array.isArray(p.photo_gallery) ? p.photo_gallery.length : 0;
+        return '<article class="p-list-item"><div><span class="p-pill">' + (count ? count + ' response(s)' : 'Waiting for a response') + '</span><h3>' + escapeText(p.recipient_name || "A special person") + '</h3><p>' + escapeText(p.question) + '<br>Created ' + escapeText(dateLabel(p.created_at)) + '</p></div><div class="p-list-actions"><button class="p-button ghost" data-copy="' + escapeText(p.id) + '">Copy link</button><a class="p-button ghost" href="inbox.html?id=' + encodeURIComponent(p.id) + '">View replies</a>' + (photoCount ? '<button class="p-button ghost" data-optimize-photos="' + escapeText(p.id) + '">Optimize photos (' + photoCount + ')</button>' : '') + '<button class="p-button ghost" data-delete="' + escapeText(p.id) + '">Delete</button></div></article>';
       }).join("");
       $$("[data-copy]").forEach(btn => btn.addEventListener("click", async () => {
         const link = proposalUrl(btn.dataset.copy);
@@ -987,6 +988,23 @@
         if (!window.confirm("Delete this proposal and its replies? This cannot be undone.")) return;
         try { await deleteProposal(btn.dataset.delete); location.reload(); }
         catch (error) { alert(error.message || "Could not delete proposal."); }
+      }));
+      $$("[data-optimize-photos]").forEach(btn => btn.addEventListener("click", async () => {
+        const originalLabel = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Optimizing photos…";
+        try {
+          const result = await optimizeExistingProposalPhotos(btn.dataset.optimizePhotos);
+          btn.textContent = result.optimized
+            ? "Optimized " + result.optimized + " photo(s)"
+            : "Already optimized";
+          if (result.cleanupWarning) btn.title = "The gallery was optimized, but old file cleanup can be retried later.";
+        } catch (error) {
+          btn.textContent = originalLabel;
+          alert(error.message || "Could not optimize photos.");
+        } finally {
+          btn.disabled = false;
+        }
       }));
     } catch (error) {
       root.innerHTML = '<div class="p-notice error">Could not load your dashboard: ' + escapeText(error.message) + '</div>';
