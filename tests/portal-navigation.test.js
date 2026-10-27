@@ -229,3 +229,39 @@ test("photo storage upload failures are rolled back and old databases fall back 
   assert.match(portal, /createSignedUrl\(photo\.path, PHOTO_URL_TTL_SECONDS\)/);
   assert.match(portal, /A missing\/expired image should never stop the proposal.s Yes\/No flow/);
 });
+
+
+test("dashboard photo cleanup removes only folders for expired/deleted proposals", async () => {
+  const cleanupFn = extractFunction(portal, "cleanupOrphanedProposalPhotos");
+  const userId = "11111111-1111-4111-8111-111111111111";
+  const activeId = "22222222-2222-4222-8222-222222222222";
+  const orphanId = "33333333-3333-4333-8333-333333333333";
+  const removedPaths = [];
+  const storage = {
+    async list(path) {
+      if (path === userId) {
+        return { data: [{ name: activeId, id: null }, { name: orphanId, id: null }], error: null };
+      }
+      if (path === userId + "/" + orphanId) {
+        return { data: [{ name: "old-photo.jpg", id: "file-object-id" }], error: null };
+      }
+      return { data: [], error: null };
+    },
+    async remove(paths) {
+      removedPaths.push(...paths);
+      return { data: null, error: null };
+    }
+  };
+  const cleanup = vm.runInNewContext("(" + cleanupFn + ")", {
+    client: { storage: { from: bucket => { assert.equal(bucket, "proposal-photos"); return storage; } } },
+    currentUser: { id: userId },
+    PHOTO_BUCKET: "proposal-photos"
+  });
+  await cleanup([{ id: activeId }]);
+  assert.deepEqual(removedPaths, [userId + "/" + orphanId + "/old-photo.jpg"]);
+});
+
+test("dashboard triggers best-effort orphaned photo cleanup without blocking proposal listing", () => {
+  assert.match(portal, /await cleanupOrphanedProposalPhotos\(proposals\)/);
+  assert.match(portal, /catch \(_\) \{\s*\/\/ Cleanup is best-effort: a Storage hiccup must not break the dashboard\./);
+});
