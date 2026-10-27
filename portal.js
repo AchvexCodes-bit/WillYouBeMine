@@ -438,14 +438,17 @@
     const theme = themes[p.theme] || themes.sweet;
     const greeting = p.recipient_name ? "Hey, " + p.recipient_name + "." : theme.greeting;
     const questionPages = Array.isArray(p.question_pages) ? p.question_pages.slice(0, 3) : [];
-    const photos = Array.isArray(p.photo_gallery) ? p.photo_gallery.filter(photo => photo && photo.url).slice(0, MAX_PROPOSAL_PHOTOS) : [];
+    const photos = Array.isArray(p.photo_gallery) ? p.photo_gallery.filter(photo => photo && (photo.url || photo.path)).slice(0, MAX_PROPOSAL_PHOTOS) : [];
     const photoOffset = photos.length ? 1 : 0;
     const extraStartIndex = photoOffset + 1;
     const finalPageIndex = questionPages.length + extraStartIndex;
     const totalPages = finalPageIndex + 1;
     const photoPage = photos.length
       ? '<section class="p-photo-question-page" data-question-page="1" hidden><p class="p-page-count">PAGE 2 OF ' + totalPages + '</p><p class="p-fixed-eyebrow">A FEW MEMORIES</p><h2 class="p-card-question">Little moments, kept close.</h2><p class="p-card-message">A few photos to look back on before the big question. ♡</p><div class="p-photo-grid">' +
-        photos.map((photo, index) => '<figure class="p-photo-item"><button type="button" class="p-photo-open" data-photo-open data-photo-url="' + escapeText(photo.url) + '" data-photo-alt="' + escapeText(photo.caption || ("Memory " + (index + 1))) + '" data-photo-caption="' + escapeText(photo.caption || "") + '" aria-label="View photo ' + (index + 1) + ' full size"><img src="' + escapeText(photo.url) + '" alt="' + escapeText(photo.caption || ("Memory " + (index + 1))) + '" loading="lazy"></button>' +
+        photos.map((photo, index) => '<figure class="p-photo-item" data-photo-index="' + index + '">' +
+          (photo.url
+            ? '<button type="button" class="p-photo-open" data-photo-open data-photo-url="' + escapeText(photo.url) + '" data-photo-alt="' + escapeText(photo.caption || ("Memory " + (index + 1))) + '" data-photo-caption="' + escapeText(photo.caption || "") + '" aria-label="View photo ' + (index + 1) + ' full size"><img src="' + escapeText(photo.url) + '" alt="' + escapeText(photo.caption || ("Memory " + (index + 1))) + '" loading="eager" decoding="async"></button>'
+            : '<div class="p-photo-placeholder" role="status"><span class="p-photo-loader" aria-hidden="true"></span><span>Preparing photo…</span></div>') +
           (photo.caption ? '<figcaption class="p-photo-caption">' + escapeText(photo.caption) + '</figcaption>' : '') + '</figure>').join("") +
         '</div></section><dialog class="p-photo-lightbox" aria-label="Expanded photo"><button type="button" class="p-photo-lightbox-close" aria-label="Close photo">×</button><img src="" alt="Expanded memory"><p class="p-photo-lightbox-caption"></p></dialog>'
       : "";
@@ -516,18 +519,18 @@
       if (typeof dialog.close === "function" && dialog.open) dialog.close();
       else dialog.removeAttribute("open");
     }
-    $$("[data-photo-open]", card).forEach(button => {
-      button.addEventListener("click", () => {
-        if (!image || !button.dataset.photoUrl) return;
-        image.src = button.dataset.photoUrl;
-        image.alt = button.dataset.photoAlt || "Memory";
-        if (caption) caption.textContent = button.dataset.photoCaption || "";
-        if (typeof dialog.showModal === "function") {
-          try { dialog.showModal(); } catch (_) { dialog.setAttribute("open", ""); }
-        } else {
-          dialog.setAttribute("open", "");
-        }
-      });
+    // Use delegation because signed image URLs are filled in after the proposal renders.
+    card.addEventListener("click", event => {
+      const button = event.target && event.target.closest ? event.target.closest("[data-photo-open]") : null;
+      if (!button || !card.contains(button) || !image || !button.dataset.photoUrl) return;
+      image.src = button.dataset.photoUrl;
+      image.alt = button.dataset.photoAlt || "Memory";
+      if (caption) caption.textContent = button.dataset.photoCaption || "";
+      if (typeof dialog.showModal === "function") {
+        try { dialog.showModal(); } catch (_) { dialog.setAttribute("open", ""); }
+      } else {
+        dialog.setAttribute("open", "");
+      }
     });
     if (closeButton) closeButton.addEventListener("click", closeDialog);
     dialog.addEventListener("click", event => {
@@ -878,12 +881,22 @@
     try {
       const proposal = await fetchProposal(id);
       if (!proposal) { root.innerHTML = '<div class="p-empty"><div class="icon">♡</div><h3>This proposal is not available.</h3><p>It may have been deleted or the link may be incorrect.</p></div>'; return; }
-      proposal.photo_gallery = await resolveProposalPhotos(proposal);
+      const photoMetadata = Array.isArray(proposal.photo_gallery)
+        ? proposal.photo_gallery.filter(photo => photo && (photo.path || photo.url)).slice(0, MAX_PROPOSAL_PHOTOS)
+        : [];
+      // Start signed-URL requests without awaiting them, so the intro/Next button renders immediately.
+      const photoResolution = photoMetadata.length ? resolveProposalPhotos({ ...proposal, photo_gallery: photoMetadata }) : null;
+      proposal.photo_gallery = photoMetadata.map(photo => ({ ...photo, url: photo.url || "" }));
       root.innerHTML = cardMarkup(proposal);
       initRomanticScene(root);
       const card = root.querySelector(".p-card");
       initQuestionPages(root);
       initPhotoGallery(root);
+      if (photoResolution) {
+        photoResolution
+          .then(photos => renderResolvedPhotoGallery(root, photos))
+          .catch(() => renderResolvedPhotoGallery(root, photoMetadata.map(photo => ({ ...photo, url: "", failed: true }))));
+      }
       const noButton = $("#recipient-no", root);
       if (noButton && card.dataset.dodgeNo === "true") {
         let moves = 0;
