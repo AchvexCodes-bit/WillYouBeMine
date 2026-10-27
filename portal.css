@@ -216,3 +216,16 @@ body.proposal-experience{background:radial-gradient(ellipse at 12% 28%,#f6dfe5 0
   .p-photo-editor-item>img{width:76px;height:76px}
   .p-photo-remove{grid-column:2;justify-self:start}
 }
+
+
+/* Faster gallery loading: small placeholders give way to compressed images without blocking the proposal */
+.p-photo-placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;width:100%;aspect-ratio:4/5;padding:12px;border-radius:12px;background:linear-gradient(115deg,#f9edf0 20%,#fff8f8 38%,#f9edf0 60%);background-size:200% 100%;animation:p-photo-shimmer 1.5s ease-in-out infinite;color:var(--p-muted);font-size:11px;text-align:center}
+.p-photo-loader{width:22px;height:22px;border:2px solid #e6c8d0;border-top-color:var(--p-rose);border-radius:50%;animation:p-photo-spin .8s linear infinite}
+.p-photo-load-failed{animation:none;background:#f8eeee;color:#8f5c67;cursor:default}
+.p-photo-open img{opacity:0;transition:opacity .22s ease,transform .25s ease}
+.p-photo-open.is-loaded img{opacity:1}
+.p-photo-open:has(img:not([src])){cursor:wait}
+.p-photo-question-page .p-photo-item{content-visibility:auto}
+@keyframes p-photo-shimmer{to{background-position:-200% 0}}
+@keyframes p-photo-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.p-photo-placeholder,.p-photo-loader{animation:none!important}.p-photo-open img{transition:none!important}}
