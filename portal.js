@@ -549,7 +549,7 @@
       };
       const extra = document.createElement("div");
       extra.className = "p-recipient-details";
-      extra.innerHTML = '<div class="p-divider"></div><div class="p-field"><label for="recipient-message">Want to say a little more? (optional)</label><textarea id="recipient-message" maxlength="600" rows="3" placeholder="Share a note with your answer..."></textarea></div>';
+      extra.innerHTML = '<div class="p-divider"></div><div class="p-field"><label for="responder-name">Your name (optional)</label><input id="responder-name" maxlength="60" autocomplete="name" placeholder="Name to include with your answer"></div><div class="p-field"><label for="recipient-message">Want to say a little more? (optional)</label><textarea id="recipient-message" maxlength="600" rows="3" placeholder="Share a note with your answer..."></textarea></div>';
       root.querySelector(".p-card").appendChild(extra);
       $("#recipient-yes").addEventListener("click", () => handleAnswer("yes"));
       $("#recipient-no").addEventListener("click", () => handleAnswer("no"));
