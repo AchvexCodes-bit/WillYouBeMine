@@ -81,62 +81,162 @@
     return file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "";
   }
   async function resolveProposalPhotos(proposal) {
-    const photos = Array.isArray(proposal && proposal.photo_gallery) ? proposal.photo_gallery.slice(0, MAX_PROPOSAL_PHOTOS) : [];
+    const photos = Array.isArray(proposal && proposal.photo_gallery)
+      ? proposal.photo_gallery.filter(photo => photo && (photo.path || photo.url)).slice(0, MAX_PROPOSAL_PHOTOS)
+      : [];
     if (!photos.length) return [];
-    const resolved = await Promise.all(photos.map(async photo => {
-      if (!photo) return null;
-      if (photo.url && !photo.path) return photo;
-      if (!photo.path || !configured) return null;
+    return Promise.all(photos.map(async photo => {
+      if (photo.url && !photo.path) return { ...photo, failed: false };
+      if (!photo.path || !configured) return { ...photo, url: "", failed: true };
       try {
         if (!client) await initSupabase();
-        if (!client) return null;
+        if (!client) return { ...photo, url: "", failed: true };
         const result = await client.storage.from(PHOTO_BUCKET).createSignedUrl(photo.path, PHOTO_URL_TTL_SECONDS);
-        if (result.error || !result.data || !result.data.signedUrl) return null;
-        return { ...photo, url: result.data.signedUrl };
+        if (result.error || !result.data || !result.data.signedUrl) return { ...photo, url: "", failed: true };
+        return { ...photo, url: result.data.signedUrl, failed: false };
       } catch (_) {
-        // A missing/expired image should never stop the proposal's Yes/No flow.
-        return null;
+        // Photo URL resolution stays separate from initial proposal rendering.
+        return { ...photo, url: "", failed: true };
       }
     }));
-    return resolved.filter(photo => photo && photo.url);
+  }
+  function renderResolvedPhotoGallery(root, photos) {
+    const card = root && root.querySelector(".p-card");
+    const grid = card && card.querySelector(".p-photo-grid");
+    if (!grid || !Array.isArray(photos)) return;
+    photos.slice(0, MAX_PROPOSAL_PHOTOS).forEach((photo, index) => {
+      const figure = grid.querySelector('[data-photo-index="' + index + '"]');
+      if (!figure) return;
+      figure.replaceChildren();
+      if (photo && photo.url) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "p-photo-open";
+        button.dataset.photoOpen = "";
+        button.dataset.photoUrl = photo.url;
+        button.dataset.photoAlt = photo.caption || ("Memory " + (index + 1));
+        button.dataset.photoCaption = photo.caption || "";
+        button.setAttribute("aria-label", "View photo " + (index + 1) + " full size");
+        const image = document.createElement("img");
+        image.src = photo.url;
+        image.alt = photo.caption || ("Memory " + (index + 1));
+        image.loading = "eager";
+        image.decoding = "async";
+        image.addEventListener("load", () => button.classList.add("is-loaded"), { once: true });
+        image.addEventListener("error", () => {
+          button.replaceChildren();
+          button.disabled = true;
+          button.classList.add("p-photo-load-failed");
+          button.textContent = "This photo couldn't load.";
+          button.removeAttribute("data-photo-open");
+        }, { once: true });
+        button.appendChild(image);
+        figure.appendChild(button);
+      } else {
+        const placeholder = document.createElement("div");
+        placeholder.className = "p-photo-placeholder p-photo-load-failed";
+        placeholder.setAttribute("role", "status");
+        placeholder.textContent = "This photo couldn't load. Refresh to try again.";
+        figure.appendChild(placeholder);
+      }
+      if (photo && photo.caption) {
+        const caption = document.createElement("figcaption");
+        caption.className = "p-photo-caption";
+        caption.textContent = photo.caption;
+        figure.appendChild(caption);
+      }
+    });
+  }
+  async function prepareOptimizedPhoto(file) {
+    if (typeof createImageBitmap !== "function" || !document.createElement) return file;
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(file);
+      const maxDimension = 1600;
+      const largestSide = Math.max(bitmap.width, bitmap.height);
+      const scale = Math.min(1, maxDimension / largestSide);
+      const shouldResize = scale < 1;
+      if (!shouldResize && file.size <= 300 * 1024) return file;
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+      const context = canvas.getContext("2d");
+      if (!context) return file;
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/webp", 0.78));
+      if (!blob) return file;
+      if (!shouldResize && blob.size >= file.size) return file;
+      if (blob.size > MAX_PHOTO_BYTES) return file;
+      const baseName = String(file.name || "memory").replace(/\.[^.]+$/, "");
+      return new File([blob], baseName + ".webp", {
+        type: "image/webp",
+        lastModified: Date.now()
+      });
+    } catch (_) {
+      // Some browsers cannot decode a selected format with createImageBitmap.
+      // Keep the original file so a compression issue won't block publishing.
+      return file;
+    } finally {
+      if (bitmap && typeof bitmap.close === "function") bitmap.close();
+    }
   }
   async function uploadProposalPhotos(proposalId, selectedPhotos) {
     if (!client || !currentUser) throw new Error("Please sign in again before uploading photos.");
-    const uploaded = [];
+    const uploadedPaths = [];
     try {
-      for (let index = 0; index < selectedPhotos.length; index++) {
-        const item = selectedPhotos[index];
-        const extension = photoExtension(item.file);
-        if (!extension || !ALLOWED_PHOTO_TYPES.has(item.file.type)) {
+      const prepared = [];
+      for (const item of selectedPhotos) {
+        if (!item || !item.file || !ALLOWED_PHOTO_TYPES.has(item.file.type)) {
           throw new Error("Only JPG, PNG, and WebP photos are supported.");
         }
         if (item.file.size > MAX_PHOTO_BYTES) {
           throw new Error("Each photo must be 5 MB or smaller.");
         }
-        const path = currentUser.id + "/" + proposalId + "/" + (index + 1) + "-" + makeId() + "." + extension;
+        const file = await prepareOptimizedPhoto(item.file);
+        if (file.size > MAX_PHOTO_BYTES) {
+          throw new Error("An optimized photo is still larger than 5 MB. Please choose a smaller image.");
+        }
+        const extension = photoExtension(file);
+        if (!extension) throw new Error("Your browser couldn't prepare this photo format. Please use JPG, PNG, or WebP.");
+        prepared.push({ file, caption: String(item.caption || "").trim().slice(0, 120) });
+      }
+
+      // Upload in parallel so a five-photo gallery doesn't wait for five serial network trips.
+      const results = await Promise.allSettled(prepared.map(async (item, index) => {
+        const path = currentUser.id + "/" + proposalId + "/" + (index + 1) + "-" + makeId() + "." + photoExtension(item.file);
         const result = await client.storage.from(PHOTO_BUCKET).upload(path, item.file, {
           cacheControl: "3600",
           contentType: item.file.type,
           upsert: false
         });
         if (result.error) throw result.error;
-        uploaded.push({ path, caption: String(item.caption || "").trim().slice(0, 120) });
-      }
+        uploadedPaths.push(path);
+        return { index, path, caption: item.caption };
+      }));
+      const failed = results.find(result => result.status === "rejected");
+      if (failed) throw failed.reason;
+      const gallery = results
+        .map(result => result.value)
+        .sort((a, b) => a.index - b.index)
+        .map(({ path, caption }) => ({ path, caption }));
+
       const saved = await client.from("proposals")
-        .update({ photo_gallery: uploaded })
+        .update({ photo_gallery: gallery })
         .eq("id", proposalId)
         .eq("owner_id", currentUser.id);
       if (saved.error) throw saved.error;
-      return uploaded;
+      return gallery;
     } catch (error) {
-      if (uploaded.length) {
-        try { await client.storage.from(PHOTO_BUCKET).remove(uploaded.map(photo => photo.path)); }
-        catch (_) { /* Keep the original upload error; the bucket policies also restrict access. */ }
+      if (uploadedPaths.length) {
+        try { await client.storage.from(PHOTO_BUCKET).remove(uploadedPaths); }
+        catch (_) { /* Keep the original upload error; cleanup is best-effort. */ }
       }
       const detail = error && error.message ? error.message : "Please check the Supabase photo setup.";
       throw new Error("Photo upload failed: " + detail);
     }
   }
+
   async function cleanupOrphanedProposalPhotos(proposals) {
     if (!client || !currentUser) return;
     try {
