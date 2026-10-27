@@ -137,6 +137,32 @@
       throw new Error("Photo upload failed: " + detail);
     }
   }
+  async function cleanupOrphanedProposalPhotos(proposals) {
+    if (!client || !currentUser) return;
+    try {
+      const storage = client.storage.from(PHOTO_BUCKET);
+      const { data: folders, error } = await storage.list(currentUser.id, { limit: 1000 });
+      if (error || !Array.isArray(folders)) return;
+      const retainedIds = new Set((proposals || []).map(proposal => String(proposal.id)));
+      for (const folder of folders) {
+        const proposalId = String(folder && folder.name || "");
+        // Supabase Storage represents directories as entries without a file id.
+        if (folder.id || !/^[0-9a-f-]{36}$/i.test(proposalId) || retainedIds.has(proposalId)) continue;
+        const listing = await storage.list(currentUser.id + "/" + proposalId, { limit: 20 });
+        if (listing.error || !Array.isArray(listing.data)) continue;
+        const paths = listing.data
+          .filter(item => item && item.id && item.name)
+          .map(item => currentUser.id + "/" + proposalId + "/" + item.name);
+        if (paths.length) {
+          const removed = await storage.remove(paths);
+          if (removed.error) continue;
+        }
+      }
+    } catch (_) {
+      // Cleanup is best-effort: a Storage hiccup must not break the dashboard.
+    }
+  }
+
   async function initSupabase() {
     if (!configured) return null;
     if (!window.supabase || !window.supabase.createClient) {
@@ -656,6 +682,7 @@
         }
       });
       const proposals = await listMyProposals();
+      await cleanupOrphanedProposalPhotos(proposals);
       const responses = await listResponses(proposals.map(p => p.id));
       $("#stat-proposals").textContent = String(proposals.length);
       $("#stat-answers").textContent = String(responses.length);
