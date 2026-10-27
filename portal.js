@@ -864,7 +864,7 @@
         message: $("#message").value.trim().slice(0, 1000),
         yes_text: $("#yes-text").value.trim().slice(0, 60) || "Yes, absolutely! ♥",
         theme,
-        question_pages: $(".p-extra-page-editor").slice(0, 3).map(el => ({ question: $("[data-extra-question]", el).value.trim().slice(0, 180), message: $("[data-extra-message]", el).value.trim().slice(0, 500) })),
+        question_pages: $$(".p-extra-page-editor").slice(0, 3).map(el => ({ question: $("[data-extra-question]", el).value.trim().slice(0, 180), message: $("[data-extra-message]", el).value.trim().slice(0, 500) })),
         dodge_no: Boolean($("#dodge-no") && $("#dodge-no").checked),
         custom_options: {
           greeting: ($("#custom-greeting")?.value || "").trim().slice(0, 80),
