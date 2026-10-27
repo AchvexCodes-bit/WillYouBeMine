@@ -134,3 +134,16 @@ test("Supabase policy setup drops existing policies before recreating them", () 
     assert.ok(dropped >= 0 && created > dropped, `policy "${name}" should be dropped before it is created`);
   }
 });
+
+test("recipient name and note controls stay hidden until the final proposal page", () => {
+  const start = portal.indexOf("async function initProposal");
+  const end = portal.indexOf("async function initInbox", start);
+  const proposalInit = portal.slice(start, end);
+  const details = proposalInit.indexOf('const extra = document.createElement("div")');
+  const finalPage = proposalInit.indexOf('const finalPage = root.querySelector(".p-main-question-page")', details);
+  const append = proposalInit.indexOf("finalPage.appendChild(extra)", finalPage);
+  assert.ok(details >= 0, "recipient details are created");
+  assert.ok(finalPage > details, "the final proposal page is selected after building the details");
+  assert.ok(append > finalPage, "the details are appended inside the final proposal page");
+  assert.doesNotMatch(proposalInit, /root\.querySelector\("\.p-card"\)\.appendChild\(extra\)/);
+});
