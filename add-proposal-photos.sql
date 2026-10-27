@@ -78,19 +78,20 @@ create policy "Proposal owners can upload photos" on storage.objects
     )
   );
 
+drop policy if exists "Proposal owners can list their stored photos" on storage.objects;
+create policy "Proposal owners can list their stored photos" on storage.objects
+  for select to authenticated
+  using (
+    bucket_id = 'proposal-photos'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
 drop policy if exists "Proposal owners can delete photos" on storage.objects;
 create policy "Proposal owners can delete photos" on storage.objects
   for delete to authenticated
   using (
     bucket_id = 'proposal-photos'
     and (storage.foldername(name))[1] = (select auth.uid())::text
-    and (storage.foldername(name))[2] is not null
-    and exists (
-      select 1
-      from public.proposals p
-      where p.id::text = (storage.foldername(name))[2]
-        and p.owner_id = (select auth.uid())
-    )
   );
 
 -- Important: the bucket is private. Recipient pages request short-lived
