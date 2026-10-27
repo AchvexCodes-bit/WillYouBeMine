@@ -252,7 +252,7 @@ test("dashboard photo cleanup removes only folders for expired/deleted proposals
       return { data: null, error: null };
     }
   };
-  const cleanup = vm.runInNewContext("(" + cleanupFn + ")", {
+  const cleanup = vm.runInNewContext("(async " + cleanupFn + ")", {
     client: { storage: { from: bucket => { assert.equal(bucket, "proposal-photos"); return storage; } } },
     currentUser: { id: userId },
     PHOTO_BUCKET: "proposal-photos"
