@@ -277,7 +277,7 @@
   function initQuestionPages(root) {
     const card = root && root.querySelector(".p-card");
     if (!card) return;
-    const pages = $$(".p-main-question-page, .p-extra-question-page", card);
+    const pages = $("[data-question-page]", card);
     if (pages.length <= 1) return;
     const back = $(".p-page-back", card);
     const next = $(".p-page-next", card);
