@@ -202,30 +202,30 @@ test("creator provides bounded optional image selection and accessible caption c
   assert.match(createPage, /id="photo-selection-preview"/);
   assert.match(portal, /MAX_PROPOSAL_PHOTOS = 5/);
   assert.match(portal, /MAX_PHOTO_BYTES = 5 \* 1024 \* 1024/);
-  assert.match(portal, /ALLOWED_PHOTO_TYPES = new Set\\(\\["image\/jpeg", "image\/png", "image\/webp"\\]\\)/);
+  assert.match(portal, /ALLOWED_PHOTO_TYPES = new Set\(\["image\/jpeg", "image\/png", "image\/webp"\]\)/);
   assert.match(portal, /data-photo-caption/);
-  assert.match(portal, /URL\\.createObjectURL/);
-  assert.match(portalCss, /\\.p-photo-question-page\\[hidden\\]/);
-  assert.match(portalCss, /\\.p-main-question-page\\[hidden\\]/);
-  assert.match(portalCss, /\\.p-photo-lightbox::backdrop/);
+  assert.match(portal, /URL\.createObjectURL/);
+  assert.match(portalCss, /\.p-photo-question-page\[hidden\]/);
+  assert.match(portalCss, /\.p-main-question-page\[hidden\]/);
+  assert.match(portalCss, /\.p-photo-lightbox::backdrop/);
 });
 
 test("photo storage migration is private, owner-scoped, type-limited, and expiry-aware", () => {
   const migration = fs.readFileSync(path.join(__dirname, "..", "add-proposal-photos.sql"), "utf8");
   assert.match(migration, /add column if not exists photo_gallery jsonb/i);
-  assert.match(migration, /'proposal-photos',[\\s\\S]*false,[\\s\\S]*5242880,[\\s\\S]*image\\/jpeg[\\s\\S]*image\\/png[\\s\\S]*image\\/webp/i);
+  assert.match(migration, /'proposal-photos',[\s\S]*false,[\s\S]*5242880,[\s\S]*image\/jpeg[\s\S]*image\/png[\s\S]*image\/webp/i);
   assert.match(migration, /Proposal photos readable for active proposals/);
-  assert.match(migration, /p\\.created_at > now\\(\\) - interval '15 days'/);
+  assert.match(migration, /p\.created_at > now\(\) - interval '15 days'/);
   assert.match(migration, /Proposal owners can upload photos/);
   assert.match(migration, /Proposal owners can delete photos/);
-  assert.match(migration, /grant update on public\\.proposals to authenticated/i);
+  assert.match(migration, /grant update on public\.proposals to authenticated/i);
 });
 
 test("photo storage upload failures are rolled back and old databases fall back without photo support", () => {
   assert.match(portal, /Photo sharing needs one-time setup/);
   assert.match(portal, /Photo upload failed:/);
-  assert.match(portal, /isMissingPhotoColumn\\(result\\.error\\)/);
-  assert.match(portal, /client\\.storage\\.from\\(PHOTO_BUCKET\\)\\.remove/);
-  assert.match(portal, /createSignedUrl\\(photo\\.path, PHOTO_URL_TTL_SECONDS\\)/);
-  assert.match(portal, /A missing\\/expired image should never stop the proposal's Yes\\/No flow/);
+  assert.match(portal, /isMissingPhotoColumn\(result\.error\)/);
+  assert.match(portal, /client\.storage\.from\(PHOTO_BUCKET\)\.remove/);
+  assert.match(portal, /createSignedUrl\(photo\.path, PHOTO_URL_TTL_SECONDS\)/);
+  assert.match(portal, /A missing\/expired image should never stop the proposal.s Yes\/No flow/);
 });
