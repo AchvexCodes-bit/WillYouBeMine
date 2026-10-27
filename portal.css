@@ -174,3 +174,19 @@ body.proposal-experience{background:radial-gradient(ellipse at 12% 28%,#f6dfe5 0
 @media(max-width:950px){.proposal-layout{grid-template-columns:minmax(0,1fr);gap:24px}.proposal-side{order:2}.proposal-experience .proposal-stage .p-card{width:min(100%,760px)}}
 @media(max-width:600px){.proposal-experience .proposal-main{width:92vw;padding:25px 0 45px}.proposal-experience .proposal-main>.p-title{font-size:clamp(38px,10vw,52px)}.proposal-layout{gap:18px}.proposal-experience .proposal-stage .p-card{min-height:0;padding:21px 17px;border-radius:18px}.proposal-experience .proposal-stage .p-card-art{height:120px}.proposal-experience .proposal-stage .p-card-question{font-size:clamp(29px,8vw,38px)}.proposal-experience .proposal-stage .p-card-message{font-size:13px;margin:14px 0 18px}.proposal-experience .proposal-stage .p-card-actions button{flex:1 1 100%;width:100%}.proposal-side{padding:24px 20px;border-radius:18px}.proposal-side h2{font-size:34px}.proposal-side-steps{gap:16px}.proposal-side-note{margin-top:24px}.proposal-privacy{font-size:11px;padding:0 8px}}
 @media(prefers-reduced-motion:reduce){.proposal-side-glow{animation:none}}
+
+
+/* Reply inbox: make saved answers and optional notes easy to find */
+.p-reply-card{align-items:flex-start;padding:clamp(20px,3vw,30px);gap:20px;border-radius:14px;box-shadow:0 10px 30px rgba(75,41,48,.045)}
+.p-reply-content{flex:1;min-width:0}
+.p-reply-card h3{font-size:clamp(22px,2.5vw,30px);margin:12px 0}
+.p-reply-question{font-size:13px;line-height:1.7;color:var(--p-ink);overflow-wrap:anywhere}
+.p-reply-meta{font-size:11px!important;color:var(--p-muted);margin-top:8px}
+.p-reply-message{margin-top:18px;padding:17px 19px;border:1px solid #f0d9df;border-radius:12px;background:linear-gradient(135deg,#fff8f7,#fff1f3)}
+.p-reply-message>span{font-size:9px;font-weight:700;letter-spacing:.14em;color:#a45c6c}
+.p-reply-message p{font:500 16px/1.8 var(--p-serif);white-space:pre-wrap;overflow-wrap:anywhere;margin:8px 0 0;color:#5a3a47}
+.p-reply-empty-note{margin-top:14px;font-style:italic}
+.p-reply-actions{display:flex;flex-wrap:wrap;gap:8px}
+.p-pill-yes{background:#e7f5eb;color:#31734a}
+.p-pill-no{background:#f8e7e8;color:#a34f62}
+@media(max-width:600px){.p-reply-card{padding:16px;gap:12px}.p-reply-card h3{font-size:23px}.p-reply-message{padding:14px}.p-reply-message p{font-size:15px}.p-reply-actions,.p-reply-actions .p-button{width:100%}}
