@@ -127,3 +127,50 @@ img,svg,video,canvas{max-width:100%;height:auto}
 @keyframes p-button-shine{0%,65%{left:-60%}100%{left:135%}}
 @media(max-width:600px){.p-card.p-romantic-scene{box-shadow:0 16px 44px rgba(132,54,83,.12)}.p-floating-piece{font-size:calc(var(--size)*.85)}}
 @media(prefers-reduced-motion:reduce){.p-card.p-romantic-scene,.p-card.p-romantic-scene:before,.p-card-orb,.p-card-heart,.p-floating-piece,.p-card-question,.p-card-message,.p-question-reveal,.p-card-yes:after,.p-card-greeting{animation:none!important;transition:none!important}.p-floating-hearts{display:none}}
+
+
+/* Full-width recipient experience: balanced layout, richer ambience, no dead space */
+body.proposal-experience{background:radial-gradient(ellipse at 12% 28%,#f6dfe5 0,transparent 32%),radial-gradient(ellipse at 92% 66%,#eee4f4 0,transparent 34%),#fffaf8;background-attachment:fixed}
+.proposal-experience .p-top{background:linear-gradient(90deg,#342638,#57384b,#342638)}
+.proposal-experience .p-nav{background:rgba(255,250,248,.88);backdrop-filter:blur(16px)}
+.proposal-experience .proposal-main{width:min(1420px,94vw);max-width:none!important;padding:clamp(28px,4vw,58px) 0 72px}
+.proposal-experience .proposal-main>.p-title{font-size:clamp(42px,5.2vw,70px);margin:12px 0}
+.proposal-experience .proposal-main>.p-subtitle{font-size:15px;margin-bottom:34px!important}
+.proposal-layout{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.75fr);gap:clamp(22px,4vw,64px);align-items:center}
+.proposal-stage{min-width:0}
+.proposal-stage #proposal-page{display:flex;justify-content:center;min-width:0}
+.proposal-experience .proposal-stage .p-card{width:min(100%,720px);min-height:590px;padding:clamp(24px,3.5vw,46px);border-radius:24px;box-shadow:0 35px 100px rgba(73,37,58,.2),0 8px 24px rgba(73,37,58,.08)}
+.proposal-experience .proposal-stage .p-card-art{height:clamp(130px,17vw,190px)}
+.proposal-experience .proposal-stage .p-card-orb{width:clamp(112px,12vw,150px);height:clamp(112px,12vw,150px)}
+.proposal-experience .proposal-stage .p-card-heart{font-size:clamp(65px,7vw,92px)}
+.proposal-experience .proposal-stage .p-card-question{font-size:clamp(32px,3.5vw,49px);max-width:640px}
+.proposal-experience .proposal-stage .p-card-message{font-size:clamp(13px,1.2vw,16px);max-width:590px;line-height:1.9;margin:20px 0 24px}
+.proposal-experience .proposal-stage .p-card-greeting{font-size:clamp(18px,1.8vw,23px);margin-bottom:14px}
+.proposal-experience .proposal-stage .p-card-actions{gap:12px;margin:12px 0 20px}
+.proposal-experience .proposal-stage .p-card-actions button{font-size:13px;padding:15px 24px;border-radius:10px;min-height:50px;transition:transform .2s,box-shadow .2s,background .2s}
+.proposal-experience .proposal-stage .p-card-yes{box-shadow:0 9px 24px #d76b8038}
+.proposal-experience .proposal-stage .p-card-yes:hover{transform:translateY(-3px);box-shadow:0 14px 28px #d76b8050}
+.proposal-experience .proposal-stage .p-card-foot{font-size:9px;padding-top:18px}
+.proposal-experience .proposal-stage .p-recipient-details{margin-top:18px}
+.proposal-experience .proposal-stage .p-recipient-details .p-field label{font-size:13px}
+.proposal-experience .proposal-stage .p-recipient-details textarea{border-radius:12px;padding:15px;min-height:110px}
+.proposal-privacy{text-align:center;max-width:700px;margin:18px auto 0;line-height:1.8}
+.proposal-side{position:relative;overflow:hidden;padding:clamp(26px,3.5vw,48px);border:1px solid rgba(255,255,255,.8);border-radius:26px;background:linear-gradient(145deg,rgba(255,255,255,.88),rgba(255,242,244,.8));box-shadow:0 24px 75px rgba(100,58,78,.09);backdrop-filter:blur(18px)}
+.proposal-side-glow{position:absolute;right:24px;top:10px;font-size:100px;color:#e8b5c3;opacity:.35;animation:p-side-float 5s ease-in-out infinite}
+.proposal-side .p-eyebrow{position:relative;z-index:1}
+.proposal-side h2{position:relative;z-index:1;font:500 clamp(30px,3vw,44px)/1.12 var(--p-serif);letter-spacing:-.045em;margin:18px 0}
+.proposal-side h2 em{color:var(--p-rose);font-weight:500}
+.proposal-side>p{font-size:14px;color:var(--p-muted);line-height:1.9;margin:0 0 30px}
+.proposal-side-steps{display:grid;gap:20px}
+.proposal-side-steps>div{display:grid;grid-template-columns:42px minmax(0,1fr);gap:13px;align-items:start}
+.proposal-side-steps>div>span{width:40px;height:40px;border-radius:13px;display:grid;place-items:center;background:#f8e5e9;color:#b84d67;font-size:11px;font-weight:700}
+.proposal-side-steps section{display:grid;gap:5px;padding-top:2px}
+.proposal-side-steps strong{font-size:13px}
+.proposal-side-steps small{font-size:12px;line-height:1.7;color:var(--p-muted)}
+.proposal-side-note{display:flex;align-items:center;gap:14px;margin-top:32px;padding:17px;border-radius:14px;background:linear-gradient(120deg,#f9e5e9,#f8f0f4)}
+.proposal-side-note>span{font-size:27px;color:var(--p-rose)}
+.proposal-side-note p{font:italic 15px/1.6 var(--p-serif);color:#795563;margin:0}
+@keyframes p-side-float{0%,100%{transform:translateY(0) rotate(-7deg)}50%{transform:translateY(9px) rotate(7deg)}}
+@media(max-width:950px){.proposal-layout{grid-template-columns:minmax(0,1fr);gap:24px}.proposal-side{order:2}.proposal-experience .proposal-stage .p-card{width:min(100%,760px)}}
+@media(max-width:600px){.proposal-experience .proposal-main{width:92vw;padding:25px 0 45px}.proposal-experience .proposal-main>.p-title{font-size:clamp(38px,10vw,52px)}.proposal-layout{gap:18px}.proposal-experience .proposal-stage .p-card{min-height:0;padding:21px 17px;border-radius:18px}.proposal-experience .proposal-stage .p-card-art{height:120px}.proposal-experience .proposal-stage .p-card-question{font-size:clamp(29px,8vw,38px)}.proposal-experience .proposal-stage .p-card-message{font-size:13px;margin:14px 0 18px}.proposal-experience .proposal-stage .p-card-actions button{flex:1 1 100%;width:100%}.proposal-side{padding:24px 20px;border-radius:18px}.proposal-side h2{font-size:34px}.proposal-side-steps{gap:16px}.proposal-side-note{margin-top:24px}.proposal-privacy{font-size:11px;padding:0 8px}}
+@media(prefers-reduced-motion:reduce){.proposal-side-glow{animation:none}}
