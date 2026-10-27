@@ -246,3 +246,19 @@ body.proposal-experience{background:radial-gradient(ellipse at 12% 28%,#f6dfe5 0
 .p-footer .achvex-footer-links{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;font-size:11px}
 .p-footer .achvex-footer-links a{text-decoration:underline;text-underline-offset:3px}
 @media(max-width:700px){.p-top-credit{display:block;margin:3px 0 0}.p-footer .achvex-footer-links{gap:7px}}
+
+
+/* Keep the live proposal visible while the creator scrolls through customization. */
+@media (min-width: 851px) {
+  body.portal:has(#create-form) .p-grid {
+    align-items: stretch;
+  }
+  body.portal:has(#create-form) .p-grid > .p-preview {
+    position: sticky;
+    top: 18px;
+    align-self: start;
+    max-height: calc(100vh - 36px);
+    overflow: auto;
+    scrollbar-width: thin;
+  }
+}
