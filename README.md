@@ -23,7 +23,7 @@ The homepage's standalone builder works without a backend and can export a self-
 6. Enable email/password authentication. Set the Site URL and allowed redirect URLs to your deployed domain.
 7. Deploy the repository as a static site. Redeploy after changing `config.js`.
 
-The creator can optionally add up to five JPG, PNG, or WebP photos (maximum 5 MB each) with captions. Photos appear as a separate page between the fixed introduction and the extra questions. The gallery uses a private Storage bucket and short-lived signed URLs; photo access is restricted to published proposals within the existing 15-day lifetime. Deleting a proposal from the dashboard also attempts to remove its stored photos.
+The creator can optionally add up to five JPG, PNG, or WebP photos (maximum 5 MB each) with captions. Photos appear as a separate page between the fixed introduction and the extra questions. The gallery uses a private Storage bucket and short-lived signed URLs; photo access is restricted to published proposals within the existing 15-day lifetime. Deleting a proposal from the dashboard removes its stored photos. When the owner next opens the dashboard, it also best-effort cleans up photo folders left behind by the 15-day automatic proposal expiry.
 
 After setup, a creator signs up, publishes a proposal, and copies its unique link from the dashboard. The recipient opens the link on another device without signing in, chooses an answer, and may leave a note. The response is stored and appears in the creator's inbox. Each creator's dashboard and responses are restricted with row-level security policies.
 
