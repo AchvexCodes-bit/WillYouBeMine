@@ -117,3 +117,20 @@ test("recipient Next and Back navigate from the fixed intro through extras to th
   assert.equal(next.hidden, false);
   assert.equal(actions.hidden, true);
 });
+
+test("answer form includes the responder name field that the submit handler saves", () => {
+  assert.match(portal, /id="responder-name" maxlength="60"/);
+  assert.match(portal, /const name = \$\("#responder-name"\)/);
+  assert.match(portal, /recipient_name: recipientName \|\| ""/);
+});
+
+test("Supabase policy setup drops existing policies before recreating them", () => {
+  const schema = fs.readFileSync(path.join(__dirname, "..", "supabase-schema.sql"), "utf8");
+  const policyNames = [...schema.matchAll(/create policy "([^"]+)"/g)].map(match => match[1]);
+  assert.ok(policyNames.length > 0, "schema contains policies");
+  for (const name of new Set(policyNames)) {
+    const dropped = schema.indexOf(`drop policy if exists "${name}"`);
+    const created = schema.indexOf(`create policy "${name}"`);
+    assert.ok(dropped >= 0 && created > dropped, `policy "${name}" should be dropped before it is created`);
+  }
+});
