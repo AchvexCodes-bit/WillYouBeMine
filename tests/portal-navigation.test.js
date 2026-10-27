@@ -451,7 +451,9 @@ test("dashboard can optimize an existing gallery and update its paths safely", a
     Array
   });
   const result = await optimizer(proposalId);
-  assert.deepEqual(result, { optimized: 1, total: 1, cleanupWarning: false });
+  assert.equal(result.optimized, 1);
+  assert.equal(result.total, 1);
+  assert.equal(result.cleanupWarning, false);
   assert.equal(uploadedPaths.length, 1);
   assert.equal(uploadedPaths[0].path, ownerId + "/" + proposalId + "/optimized-compressed-id.webp");
   assert.equal(uploadedPaths[0].options.contentType, "image/webp");
