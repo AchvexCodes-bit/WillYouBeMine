@@ -13,7 +13,7 @@ A multi-page proposal platform. One person creates and publishes a personalized 
 
 ## Enable real cross-device sharing
 
-The static pages work in preview mode without a backend, but browser-local preview data cannot be shared with another person or device. To enable real publishing and responses:
+The homepage's standalone builder works without a backend and can export a self-contained proposal HTML file. The account-based creator, dashboard, inbox, and sign-in flows require Supabase configuration; until it is configured, those pages cannot publish shareable proposals or store cross-device replies. To enable real publishing and responses:
 
 1. Create a free project at https://supabase.com.
 2. Run `supabase-schema.sql` in the Supabase SQL Editor.
