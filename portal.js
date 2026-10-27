@@ -520,6 +520,18 @@
       else dialog.removeAttribute("open");
     }
     // Use delegation because signed image URLs are filled in after the proposal renders.
+    // Preview galleries have local blob URLs already; reveal them as soon as decoding completes.
+    $$(".p-photo-open img", card).forEach(existingImage => {
+      const button = existingImage.closest(".p-photo-open");
+      if (button && existingImage.complete && existingImage.naturalWidth > 0) button.classList.add("is-loaded");
+      existingImage.addEventListener("load", () => button && button.classList.add("is-loaded"), { once: true });
+      existingImage.addEventListener("error", () => {
+        if (button) {
+          button.classList.add("p-photo-load-failed");
+          button.classList.remove("is-loaded");
+        }
+      }, { once: true });
+    });
     card.addEventListener("click", event => {
       const button = event.target && event.target.closest ? event.target.closest("[data-photo-open]") : null;
       if (!button || !card.contains(button) || !image || !button.dataset.photoUrl) return;
