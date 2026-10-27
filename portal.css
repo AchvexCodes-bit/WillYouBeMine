@@ -225,7 +225,6 @@ body.proposal-experience{background:radial-gradient(ellipse at 12% 28%,#f6dfe5 0
 .p-photo-open img{opacity:0;transition:opacity .22s ease,transform .25s ease}
 .p-photo-open.is-loaded img{opacity:1}
 .p-photo-open:has(img:not([src])){cursor:wait}
-.p-photo-question-page .p-photo-item{content-visibility:auto}
 @keyframes p-photo-shimmer{to{background-position:-200% 0}}
 @keyframes p-photo-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.p-photo-placeholder,.p-photo-loader{animation:none!important}.p-photo-open img{transition:none!important}}
