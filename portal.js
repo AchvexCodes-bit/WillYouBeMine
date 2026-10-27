@@ -85,20 +85,42 @@
       ? proposal.photo_gallery.filter(photo => photo && (photo.path || photo.url)).slice(0, MAX_PROPOSAL_PHOTOS)
       : [];
     if (!photos.length) return [];
-    return Promise.all(photos.map(async photo => {
-      if (photo.url && !photo.path) return { ...photo, failed: false };
-      if (!photo.path || !configured) return { ...photo, url: "", failed: true };
+    const signedUrls = new Map();
+    const storedPhotos = photos.filter(photo => photo.path);
+    if (storedPhotos.length && configured) {
       try {
         if (!client) await initSupabase();
-        if (!client) return { ...photo, url: "", failed: true };
-        const result = await client.storage.from(PHOTO_BUCKET).createSignedUrl(photo.path, PHOTO_URL_TTL_SECONDS);
-        if (result.error || !result.data || !result.data.signedUrl) return { ...photo, url: "", failed: true };
-        return { ...photo, url: result.data.signedUrl, failed: false };
+        const storage = client && client.storage.from(PHOTO_BUCKET);
+        const paths = storedPhotos.map(photo => photo.path);
+        if (storage && typeof storage.createSignedUrls === "function") {
+          // One Storage request for the whole gallery instead of one request per photo.
+          const result = await storage.createSignedUrls(paths, PHOTO_URL_TTL_SECONDS);
+          if (!result.error && Array.isArray(result.data)) {
+            result.data.forEach((item, index) => {
+              const path = item && item.path ? item.path : paths[index];
+              if (item && item.signedUrl && !item.error && path) signedUrls.set(path, item.signedUrl);
+            });
+          }
+        } else if (storage) {
+          // Compatibility fallback for older versions of the Storage JS client.
+          const results = await Promise.all(storedPhotos.map(photo =>
+            storage.createSignedUrl(photo.path, PHOTO_URL_TTL_SECONDS)
+          ));
+          results.forEach((result, index) => {
+            if (result && !result.error && result.data && result.data.signedUrl) {
+              signedUrls.set(storedPhotos[index].path, result.data.signedUrl);
+            }
+          });
+        }
       } catch (_) {
-        // Photo URL resolution stays separate from initial proposal rendering.
-        return { ...photo, url: "", failed: true };
+        // A photo URL failure must never block the proposal or its Yes/No answer flow.
       }
-    }));
+    }
+    return photos.map(photo => {
+      if (photo.url && !photo.path) return { ...photo, failed: false };
+      const url = photo.path ? signedUrls.get(photo.path) || "" : "";
+      return { ...photo, url, failed: !url };
+    });
   }
   function renderResolvedPhotoGallery(root, photos) {
     const card = root && root.querySelector(".p-card");
