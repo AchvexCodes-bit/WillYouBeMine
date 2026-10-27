@@ -332,8 +332,12 @@
       // The new gallery is live now; cleanup of old files is best-effort and won't break it.
       let cleanupWarning = false;
       if (oldPaths.length) {
-        const removed = await storage.remove(oldPaths);
-        cleanupWarning = Boolean(removed.error);
+        try {
+          const removed = await storage.remove(oldPaths);
+          cleanupWarning = Boolean(removed.error);
+        } catch (_) {
+          cleanupWarning = true;
+        }
       }
       return { optimized: optimizedCount, total: gallery.length, cleanupWarning };
     } catch (error) {
@@ -976,7 +980,7 @@
       }
       root.innerHTML = proposals.map(p => {
         const count = responses.filter(r => r.proposal_id === p.id).length;
-        const photoCount = Array.isArray(p.photo_gallery) ? p.photo_gallery.length : 0;
+        const photoCount = Array.isArray(p.photo_gallery) ? p.photo_gallery.filter(photo => photo && photo.path).length : 0;
         return '<article class="p-list-item"><div><span class="p-pill">' + (count ? count + ' response(s)' : 'Waiting for a response') + '</span><h3>' + escapeText(p.recipient_name || "A special person") + '</h3><p>' + escapeText(p.question) + '<br>Created ' + escapeText(dateLabel(p.created_at)) + '</p></div><div class="p-list-actions"><button class="p-button ghost" data-copy="' + escapeText(p.id) + '">Copy link</button><a class="p-button ghost" href="inbox.html?id=' + encodeURIComponent(p.id) + '">View replies</a>' + (photoCount ? '<button class="p-button ghost" data-optimize-photos="' + escapeText(p.id) + '">Optimize photos (' + photoCount + ')</button>' : '') + '<button class="p-button ghost" data-delete="' + escapeText(p.id) + '">Delete</button></div></article>';
       }).join("");
       $$("[data-copy]").forEach(btn => btn.addEventListener("click", async () => {
