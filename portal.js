@@ -144,6 +144,7 @@
         image.alt = photo.caption || ("Memory " + (index + 1));
         image.loading = "eager";
         image.decoding = "async";
+        image.fetchPriority = index === 0 ? "high" : "auto";
         image.addEventListener("load", () => button.classList.add("is-loaded"), { once: true });
         image.addEventListener("error", () => {
           button.replaceChildren();
