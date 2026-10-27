@@ -257,7 +257,7 @@
       }
       art.appendChild(layer);
     }
-    const pages = $(".p-main-question-page, .p-extra-question-page", card);
+    const pages = $$(".p-main-question-page, .p-extra-question-page", card);
     pages.forEach((page, index) => {
       page.classList.add("p-question-reveal");
       page.style.setProperty("--page-delay", (index * 60) + "ms");
