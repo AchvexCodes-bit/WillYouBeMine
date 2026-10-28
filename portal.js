@@ -835,7 +835,7 @@
           '<div class="p-field"><label>Message (optional)</label><textarea data-extra-message maxlength="500" rows="2" placeholder="Add a little context…">' + escapeText(item.message || "") + '</textarea></div></div>';
       }).join("");
       pageEditor.querySelectorAll("input,textarea").forEach(el => el.addEventListener("input", renderDraft));
-      $("[data-extra-preset]", pageEditor).forEach(select => select.addEventListener("change", () => {
+      $$("[data-extra-preset]", pageEditor).forEach(select => select.addEventListener("change", () => {
         const editor = select.closest(".p-extra-page-editor");
         const questionField = $("[data-extra-question]", editor);
         const messageField = $("[data-extra-message]", editor);
