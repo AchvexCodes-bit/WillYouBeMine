@@ -262,3 +262,8 @@ body.proposal-experience{background:radial-gradient(ellipse at 12% 28%,#f6dfe5 0
     scrollbar-width: thin;
   }
 }
+
+/* Clear visual separation between choosing a question starter and editing it. */
+.p-extra-preset-field{padding-bottom:12px;border-bottom:1px solid var(--p-line)}
+.p-extra-preset-field select{cursor:pointer}
+.p-extra-preset-field select:focus-visible{outline:2px solid var(--p-rose);outline-offset:2px}
