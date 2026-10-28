@@ -464,6 +464,8 @@
   }
   async function fetchProposal(id) {
     if (configured) {
+      // Postgres proposal IDs are UUIDs. Reject malformed links before they can trigger a noisy 400 response.
+      if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(String(id || ""))) return null;
       if (!client) await initSupabase();
       let fields = "id,creator_name,recipient_name,question,message,yes_text,theme,status,created_at,question_pages,dodge_no,custom_options";
       let includePhotos = true;
