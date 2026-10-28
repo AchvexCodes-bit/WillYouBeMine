@@ -503,3 +503,54 @@ test("extra question pages offer ready-made starters and keep starter text edita
   assert.match(portal, /Write my own \(blank\)/);
   assert.match(portal, /question_pages:\s*\$\$\("\.p-extra-page-editor"\)/);
 });
+
+test("live preview re-renders retain the current question page while typing", () => {
+  const pageFn = extractFunction(portal, "initQuestionPages");
+  const pages = [makePage(), makePage(), makePage(), makePage()];
+  const handlers = {};
+  const back = {
+    disabled: false,
+    addEventListener(event, handler) { handlers[`back:${event}`] = handler; }
+  };
+  const next = {
+    hidden: false,
+    addEventListener(event, handler) { handlers[`next:${event}`] = handler; }
+  };
+  const actions = { hidden: true };
+  const card = {
+    querySelector(selector) {
+      if (selector === ".p-page-back") return back;
+      if (selector === ".p-page-next") return next;
+      if (selector === ".p-card-actions") return actions;
+      return null;
+    },
+    querySelectorAll(selector) {
+      return selector === "[data-question-page]" ? pages : [];
+    }
+  };
+  const root = { querySelector(selector) { return selector === ".p-card" ? card : null; } };
+  const $ = (selector, scope) => scope.querySelector(selector);
+  const $$ = (selector, scope) => Array.from(scope.querySelectorAll(selector));
+  const initQuestionPages = vm.runInNewContext(`(${pageFn})`, { $, $$ });
+
+  // Simulate rebuilding the preview while the creator is typing on page 3.
+  assert.doesNotThrow(() => initQuestionPages(root, 2));
+  assert.deepEqual(pages.map(page => page.hidden), [true, true, false, true]);
+  assert.equal(pages[2].counter.textContent, "PAGE 3 OF 4");
+  assert.equal(back.disabled, false);
+  assert.equal(next.hidden, false);
+  assert.equal(actions.hidden, true);
+
+  // Navigation must keep working after the preview is initialized at that page.
+  handlers["next:click"]();
+  assert.deepEqual(pages.map(page => page.hidden), [true, true, true, false]);
+  assert.equal(actions.hidden, false);
+  assert.equal(next.hidden, true);
+
+  // If the page count shrinks while editing, the index is safely clamped.
+  assert.doesNotThrow(() => initQuestionPages(root, 99));
+  assert.deepEqual(pages.map(page => page.hidden), [true, true, true, false]);
+  assert.match(portal, /const existingPages = \$\$\("\[data-question-page\]", preview\)/);
+  assert.match(portal, /const visiblePageIndex = existingPages\.findIndex\(page => !page\.hidden\)/);
+  assert.match(portal, /initQuestionPages\(preview, currentPageIndex\)/);
+});
