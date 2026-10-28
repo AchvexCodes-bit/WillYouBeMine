@@ -109,7 +109,7 @@ test("extra pages are capped, validated, persisted, and navigable in preview and
   assert.match(portal, /Math\.min\(3, Number\(pageCount\.value\)/);
   assert.match(portal, /question_pages:\s*\$\$\("\.p-extra-page-editor"\)\.slice\(0, 3\)/);
   assert.match(portal, /findIndex\(page => !page\.question\)/);
-  assert.match(portal, /initQuestionPages\(preview\)/);
+  assert.match(portal, /initQuestionPages\(preview, currentPageIndex\)/);
   assert.match(portal, /initQuestionPages\(root\)/);
   assert.match(schema, /question_pages jsonb not null default '\[\]'::jsonb/i);
   assert.match(schema, /dodge_no boolean not null default false/i);
