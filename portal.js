@@ -815,7 +815,7 @@
     function renderExtraPageEditors() {
       if (!pageCount || !pageEditor) return;
       const count = Math.max(0, Math.min(3, Number(pageCount.value) || 0));
-      const previous = $(".p-extra-page-editor", pageEditor).map(el => ({
+      const previous = $$(".p-extra-page-editor", pageEditor).map(el => ({
         question: $("[data-extra-question]", el).value,
         message: $("[data-extra-message]", el).value,
         preset: $("[data-extra-preset]", el)?.value || ""
