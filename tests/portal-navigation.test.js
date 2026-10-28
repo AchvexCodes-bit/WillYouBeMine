@@ -617,7 +617,7 @@ test("missing public-proposal RPC fails closed instead of reading the public tab
     initSupabase: async () => {},
     isMissingPublicProposalFunction: error => error.code === "PGRST202"
   });
-  await assert.rejects(fetchProposal(id), /secure-public-proposals\\.sql/);
+  await assert.rejects(fetchProposal(id), error => error.message.includes("secure-public-proposals.sql"));
   assert.equal(directReads, 0, "the public page must never fall back to querying proposal rows directly");
 });
 
