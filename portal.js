@@ -107,6 +107,13 @@
       message.includes("could not find")
     );
   }
+  function isMissingPublicProposalFunction(error) {
+    const message = String(error && error.message || "").toLowerCase();
+    return Boolean(error && error.code === "PGRST202") || (
+      message.includes("get_published_proposal") &&
+      (message.includes("schema cache") || message.includes("could not find") || message.includes("not found"))
+    );
+  }
   function photoExtension(file) {
     return file.type === "image/jpeg" ? "jpg" : file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "";
   }
@@ -467,6 +474,22 @@
       // Postgres proposal IDs are UUIDs. Reject malformed links before they can trigger a noisy 400 response.
       if (!/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(String(id || ""))) return null;
       if (!client) await initSupabase();
+      if (client && typeof client.rpc === "function") {
+        const publicResult = await client.rpc("get_published_proposal", { p_proposal_id: id });
+        if (!publicResult.error) {
+          const row = Array.isArray(publicResult.data) ? (publicResult.data[0] || null) : publicResult.data;
+          if (!row) return null;
+          return {
+            ...row,
+            question_pages: Array.isArray(row.question_pages) ? row.question_pages : [],
+            dodge_no: Boolean(row.dodge_no),
+            custom_options: row.custom_options && typeof row.custom_options === "object" ? row.custom_options : {},
+            photo_gallery: Array.isArray(row.photo_gallery) ? row.photo_gallery : []
+          };
+        }
+        if (!isMissingPublicProposalFunction(publicResult.error)) throw publicResult.error;
+        // Older databases continue to work until secure-public-proposals.sql is applied.
+      }
       let fields = "id,creator_name,recipient_name,question,message,yes_text,theme,status,created_at,question_pages,dodge_no,custom_options";
       let includePhotos = true;
       let result = null;

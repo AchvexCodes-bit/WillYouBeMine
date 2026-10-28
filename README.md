@@ -18,10 +18,11 @@ The homepage's standalone builder works without a backend and can export a self-
 1. Create a free project at https://supabase.com.
 2. Run `supabase-schema.sql` in the Supabase SQL Editor.
 3. Run `add-proposal-photos.sql` in the same SQL Editor to enable the optional photo gallery. This migration is repeatable and is required for existing projects as well as fresh projects.
-4. In Supabase Project Settings / API, copy the Project URL and public anon/publishable key.
-5. Add those two values to `config.js` as `supabaseUrl` and `supabaseAnonKey`. Never use the service-role key in client-side code.
-6. Enable email/password authentication. Set the Site URL and allowed redirect URLs to your deployed domain.
-7. Deploy the repository as a static site. Redeploy after changing `config.js`.
+4. Run `secure-public-proposals.sql` in the same SQL Editor. It removes anonymous table-wide proposal reads and replaces them with a link-scoped RPC; it does not delete proposal data. Existing deployments must run this step to close the public-table exposure.
+5. In Supabase Project Settings / API, copy the Project URL and public anon/publishable key.
+6. Add those two values to `config.js` as `supabaseUrl` and `supabaseAnonKey`. Never use the service-role key in client-side code.
+7. Enable email/password authentication. Set the Site URL and allowed redirect URLs to your deployed domain.
+8. Deploy the repository as a static site. Redeploy after changing `config.js`.
 
 The creator can optionally add up to five JPG, PNG, or WebP photos (maximum 5 MB each) with captions. New uploads are resized to at most 1600 pixels on their longest edge and converted to WebP when supported. The dashboard also offers **Optimize photos** for older galleries that were uploaded before this compression was added. Photos appear as a separate page between the fixed introduction and the extra questions. The gallery uses a private Storage bucket and short-lived signed URLs; photo access is restricted to published proposals within the existing 15-day lifetime. Deleting a proposal from the dashboard removes its stored photos. When the owner next opens the dashboard, it also best-effort cleans up photo folders left behind by the 15-day automatic proposal expiry.
 

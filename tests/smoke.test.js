@@ -77,6 +77,7 @@ test("shared response flow and account-scoped database policies are defined", ()
   assert.match(sql, /enable row level security/);
   assert.match(sql, /Owners can read responses/);
   assert.match(sql, /Anyone can answer published proposals/);
+  assert.match(sql, /public\.is_published_proposal\(proposal_id\)/);
 });
 
 

@@ -217,6 +217,7 @@ test("photo storage migration is private, owner-scoped, type-limited, and expiry
   assert.match(migration, /add column if not exists photo_gallery jsonb/i);
   assert.match(migration, /'proposal-photos',[\s\S]*false,[\s\S]*5242880,[\s\S]*image\/jpeg[\s\S]*image\/png[\s\S]*image\/webp/i);
   assert.match(migration, /Proposal photos readable for active proposals/);
+  assert.match(migration, /public\.is_published_proposal_photo\(/);
   assert.match(migration, /p\.created_at > now\(\) - interval '15 days'/);
   assert.match(migration, /Proposal owners can upload photos/);
   assert.match(migration, /Proposal owners can delete photos/);
@@ -573,3 +574,79 @@ test("malformed public proposal links are rejected before a Supabase request", a
   assert.equal(initCalls, 0, "malformed IDs should be rejected before initializing the backend");
 });
 
+
+
+test("link-scoped public proposal RPC is preferred over direct table reads", async () => {
+  const fetchFn = extractFunction(portal, "fetchProposal");
+  const id = "123e4567-e89b-12d3-a456-426614174000";
+  let rpcCalls = 0;
+  let directReads = 0;
+  const fetchProposal = vm.runInNewContext("(async " + fetchFn + ")", {
+    configured: true,
+    client: {
+      async rpc(name, args) {
+        rpcCalls++;
+        assert.equal(name, "get_published_proposal");
+        assert.equal(args.p_proposal_id, id);
+        return { data: { id, question: "Will you be my person?" }, error: null };
+      },
+      from() { directReads++; throw new Error("Direct public table reads should not be used when RPC works."); }
+    },
+    initSupabase: async () => {},
+    isMissingPublicProposalFunction: () => false
+  });
+  const row = await fetchProposal(id);
+  assert.equal(row.id, id);
+  assert.deepEqual(Array.from(row.question_pages), []);
+  assert.deepEqual(JSON.parse(JSON.stringify(row.custom_options)), {});
+  assert.deepEqual(Array.from(row.photo_gallery), []);
+  assert.equal(rpcCalls, 1);
+  assert.equal(directReads, 0);
+});
+
+test("missing public-proposal RPC gracefully supports a not-yet-migrated database", async () => {
+  const fetchFn = extractFunction(portal, "fetchProposal");
+  const id = "123e4567-e89b-12d3-a456-426614174000";
+  let directReads = 0;
+  const query = {
+    select() { return this; },
+    eq() { return this; },
+    async maybeSingle() { return { data: { id, question: "Legacy proposal" }, error: null }; }
+  };
+  const fetchProposal = vm.runInNewContext("(async " + fetchFn + ")", {
+    configured: true,
+    client: {
+      async rpc() { return { data: null, error: { code: "PGRST202", message: "Could not find get_published_proposal in schema cache" } }; },
+      from(table) { directReads++; assert.equal(table, "proposals"); return query; }
+    },
+    initSupabase: async () => {},
+    isMissingPublicProposalFunction: error => error.code === "PGRST202",
+    isMissingPhotoColumn: () => false,
+    isMissingCustomOptionsColumn: () => false
+  });
+  const row = await fetchProposal(id);
+  assert.equal(row.question, "Legacy proposal");
+  assert.equal(directReads, 1);
+});
+
+test("public-proposal hardening migration removes table-wide anonymous SELECT", () => {
+  const migration = fs.readFileSync(path.join(__dirname, "..", "secure-public-proposals.sql"), "utf8");
+  assert.match(migration, /create or replace function public\.get_published_proposal\(p_proposal_id uuid\)/i);
+  assert.match(migration, /security definer/i);
+  assert.match(migration, /drop policy if exists "Anyone can view unexpired published proposals"/i);
+  assert.match(migration, /revoke all on public\.proposals from public, anon/i);
+  assert.match(migration, /grant execute on function public\.get_published_proposal\(uuid\) to anon, authenticated/i);
+  assert.doesNotMatch(migration, /create policy "Anyone can view (?:unexpired )?published proposals"/i);
+});
+
+
+test("canonical and expiry SQL do not recreate anonymous table-wide proposal reads", () => {
+  const schema = fs.readFileSync(path.join(__dirname, "..", "supabase-schema.sql"), "utf8");
+  const expiry = fs.readFileSync(path.join(__dirname, "..", "expire-proposals-after-15-days.sql"), "utf8");
+  for (const [name, sql] of [["supabase-schema.sql", schema], ["expire-proposals-after-15-days.sql", expiry]]) {
+    assert.match(sql, /create or replace function public\.get_published_proposal\(p_proposal_id uuid\)/i, `${name} must provide link-scoped reads`);
+    assert.match(sql, /public\.is_published_proposal\(proposal_id\)/i, `${name} must guard anonymous answers`);
+    assert.doesNotMatch(sql, /create policy "Anyone can view (?:unexpired )?published proposals"/i, `${name} must not add table-wide public reads`);
+    assert.match(sql, /revoke all on public\.proposals from public, anon/i, `${name} must revoke anonymous table privileges`);
+  }
+});

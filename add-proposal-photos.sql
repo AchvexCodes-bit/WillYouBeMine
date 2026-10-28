@@ -44,20 +44,32 @@ set public = false,
     file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
 
+create or replace function public.is_published_proposal_photo(p_owner_id text, p_proposal_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $function$
+  select exists (
+    select 1 from public.proposals p
+    where p.id::text = p_proposal_id
+      and p.owner_id::text = p_owner_id
+      and p.status = 'published'
+      and p.created_at > now() - interval '15 days'
+  );
+$function$;
+revoke all on function public.is_published_proposal_photo(text, text) from public;
+grant execute on function public.is_published_proposal_photo(text, text) to anon, authenticated;
+
 drop policy if exists "Proposal photos readable for active proposals" on storage.objects;
 create policy "Proposal photos readable for active proposals" on storage.objects
   for select to anon, authenticated
   using (
     bucket_id = 'proposal-photos'
-    and (storage.foldername(name))[1] is not null
-    and (storage.foldername(name))[2] is not null
-    and exists (
-      select 1
-      from public.proposals p
-      where p.id::text = (storage.foldername(name))[2]
-        and p.owner_id::text = (storage.foldername(name))[1]
-        and p.status = 'published'
-        and p.created_at > now() - interval '15 days'
+    and public.is_published_proposal_photo(
+      (storage.foldername(name))[1],
+      (storage.foldername(name))[2]
     )
   );
 
