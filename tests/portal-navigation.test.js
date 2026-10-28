@@ -604,29 +604,21 @@ test("link-scoped public proposal RPC is preferred over direct table reads", asy
   assert.equal(directReads, 0);
 });
 
-test("missing public-proposal RPC gracefully supports a not-yet-migrated database", async () => {
+test("missing public-proposal RPC fails closed instead of reading the public table", async () => {
   const fetchFn = extractFunction(portal, "fetchProposal");
   const id = "123e4567-e89b-12d3-a456-426614174000";
   let directReads = 0;
-  const query = {
-    select() { return this; },
-    eq() { return this; },
-    async maybeSingle() { return { data: { id, question: "Legacy proposal" }, error: null }; }
-  };
   const fetchProposal = vm.runInNewContext("(async " + fetchFn + ")", {
     configured: true,
     client: {
       async rpc() { return { data: null, error: { code: "PGRST202", message: "Could not find get_published_proposal in schema cache" } }; },
-      from(table) { directReads++; assert.equal(table, "proposals"); return query; }
+      from() { directReads++; throw new Error("Public direct table access is forbidden."); }
     },
     initSupabase: async () => {},
-    isMissingPublicProposalFunction: error => error.code === "PGRST202",
-    isMissingPhotoColumn: () => false,
-    isMissingCustomOptionsColumn: () => false
+    isMissingPublicProposalFunction: error => error.code === "PGRST202"
   });
-  const row = await fetchProposal(id);
-  assert.equal(row.question, "Legacy proposal");
-  assert.equal(directReads, 1);
+  await assert.rejects(fetchProposal(id), /secure-public-proposals\\.sql/);
+  assert.equal(directReads, 0, "the public page must never fall back to querying proposal rows directly");
 });
 
 test("public-proposal hardening migration removes table-wide anonymous SELECT", () => {
