@@ -476,41 +476,23 @@
       if (!client) await initSupabase();
       if (client && typeof client.rpc === "function") {
         const publicResult = await client.rpc("get_published_proposal", { p_proposal_id: id });
-        if (!publicResult.error) {
-          const row = Array.isArray(publicResult.data) ? (publicResult.data[0] || null) : publicResult.data;
-          if (!row) return null;
-          return {
-            ...row,
-            question_pages: Array.isArray(row.question_pages) ? row.question_pages : [],
-            dodge_no: Boolean(row.dodge_no),
-            custom_options: row.custom_options && typeof row.custom_options === "object" ? row.custom_options : {},
-            photo_gallery: Array.isArray(row.photo_gallery) ? row.photo_gallery : []
-          };
+        if (publicResult.error) {
+          if (isMissingPublicProposalFunction(publicResult.error)) {
+            throw new Error("Proposal links are temporarily unavailable until the site owner runs secure-public-proposals.sql in Supabase SQL Editor. This security update is required to protect proposal privacy.");
+          }
+          throw publicResult.error;
         }
-        if (!isMissingPublicProposalFunction(publicResult.error)) throw publicResult.error;
-        // Older databases continue to work until secure-public-proposals.sql is applied.
+        const row = Array.isArray(publicResult.data) ? (publicResult.data[0] || null) : publicResult.data;
+        if (!row) return null;
+        return {
+          ...row,
+          question_pages: Array.isArray(row.question_pages) ? row.question_pages : [],
+          dodge_no: Boolean(row.dodge_no),
+          custom_options: row.custom_options && typeof row.custom_options === "object" ? row.custom_options : {},
+          photo_gallery: Array.isArray(row.photo_gallery) ? row.photo_gallery : []
+        };
       }
-      let fields = "id,creator_name,recipient_name,question,message,yes_text,theme,status,created_at,question_pages,dodge_no,custom_options";
-      let includePhotos = true;
-      let result = null;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        const selectedFields = fields + (includePhotos ? ",photo_gallery" : "");
-        result = await client.from("proposals").select(selectedFields).eq("id", id).eq("status", "published").maybeSingle();
-        if (!result.error) break;
-        if (includePhotos && isMissingPhotoColumn(result.error)) {
-          includePhotos = false;
-          continue;
-        }
-        if (fields.includes(",custom_options") && isMissingCustomOptionsColumn(result.error)) {
-          fields = fields.replace(",custom_options", "");
-          continue;
-        }
-        break;
-      }
-      if (result.error) throw result.error;
-      if (result.data && !includePhotos) result.data.photo_gallery = [];
-      if (result.data && !fields.includes("custom_options")) result.data.custom_options = {};
-      return result.data;
+      throw new Error("This version of the publishing service does not support secure proposal links. Please contact the site owner.");
     }
     return demoProposals().find(p => p.id === id && p.status === "published") || null;
   }

@@ -650,3 +650,18 @@ test("canonical and expiry SQL do not recreate anonymous table-wide proposal rea
     assert.match(sql, /revoke all on public\.proposals from public, anon/i, `${name} must revoke anonymous table privileges`);
   }
 });
+
+test("Vercel production security headers include CSP and clickjacking protection", () => {
+  const config = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "vercel.json"), "utf8"));
+  const rule = config.headers.find(item => item.source === "/(.*)");
+  assert.ok(rule, "security headers apply to every route");
+  const headers = Object.fromEntries(rule.headers.map(item => [item.key.toLowerCase(), item.value]));
+  for (const key of ["content-security-policy", "x-content-type-options", "x-frame-options", "referrer-policy", "permissions-policy", "strict-transport-security"]) {
+    assert.ok(headers[key], `missing ${key}`);
+  }
+  assert.match(headers["content-security-policy"], /default-src 'self'/);
+  assert.match(headers["content-security-policy"], /frame-ancestors 'none'/);
+  assert.match(headers["content-security-policy"], /https:\/\/cdn\.jsdelivr\.net/);
+  assert.match(headers["content-security-policy"], /https:\/\/\*\.supabase\.co/);
+});
+

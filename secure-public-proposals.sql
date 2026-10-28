@@ -89,3 +89,6 @@ create policy "Proposal photos readable for active proposals" on storage.objects
       (storage.foldername(name))[2]
     )
   );
+
+-- Refresh PostgREST so the secure proposal RPC is immediately available to the frontend.
+notify pgrst, 'reload schema';

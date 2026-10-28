@@ -147,3 +147,6 @@ select cron.schedule(
 
 -- Safe upgrade for projects created before the extra appearance controls.
 alter table public.proposals add column if not exists custom_options jsonb not null default '{}'::jsonb;
+
+-- Refresh PostgREST so the secure proposal RPC is immediately available to the frontend.
+notify pgrst, 'reload schema';
