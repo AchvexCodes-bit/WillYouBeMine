@@ -555,3 +555,21 @@ test("live preview re-renders retain the current question page while typing", ()
   assert.match(portal, /const visiblePageIndex = existingPages\.findIndex\(page => !page\.hidden\)/);
   assert.match(portal, /initQuestionPages\(preview, currentPageIndex\)/);
 });
+
+test("malformed public proposal links are rejected before a Supabase request", async () => {
+  const fetchFn = extractFunction(portal, "fetchProposal");
+  let databaseCalls = 0;
+  let initCalls = 0;
+  const fetchProposal = vm.runInNewContext("(async " + fetchFn + ")", {
+    configured: true,
+    client: { from() { databaseCalls++; throw new Error("A malformed UUID should not reach Supabase."); } },
+    initSupabase: async () => { initCalls++; }
+  });
+
+  for (const id of ["", "invalid", "123e4567-e89b-12d3-a456-42661417400", "not-a-uuid"]) {
+    assert.equal(await fetchProposal(id), null, "malformed proposal IDs should render as unavailable");
+  }
+  assert.equal(databaseCalls, 0, "malformed IDs must not generate a database request");
+  assert.equal(initCalls, 0, "malformed IDs should be rejected before initializing the backend");
+});
+
