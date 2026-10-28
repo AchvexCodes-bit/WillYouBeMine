@@ -499,6 +499,7 @@ test("extra question pages offer ready-made starters and keep starter text edita
   assert.equal(applyPreset(presets, "does-not-exist", questionField, messageField), false);
   assert.match(portal, /data-extra-preset/);
   assert.match(portal, /select\.addEventListener\("change"/);
+  assert.match(portal, /\$\$\("\[data-extra-preset\]", pageEditor\)\.forEach\(select => select\.addEventListener\("change"/);
   assert.match(portal, /Choose a question starter…/);
   assert.match(portal, /Write my own \(blank\)/);
   assert.match(portal, /question_pages:\s*\$\$\("\.p-extra-page-editor"\)/);
