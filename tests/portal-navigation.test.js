@@ -470,3 +470,36 @@ test("dashboard offers optimization only for proposals with stored photo paths",
   assert.match(portal, /select\(fields \+ ",photo_gallery"\)/);
   assert.match(portal, /const photoCount = Array\.isArray\(p\.photo_gallery\) \? p\.photo_gallery\.filter\(photo => photo && photo\.path\)\.length : 0/);
 });
+
+test("extra question pages offer ready-made starters and keep starter text editable", () => {
+  const presetStart = portal.indexOf("const extraQuestionPresets = ");
+  const presetEnd = portal.indexOf("\n  function applyExtraQuestionPreset", presetStart);
+  assert.ok(presetStart >= 0 && presetEnd > presetStart, "pre-made question starter list exists");
+  const presetExpression = portal.slice(presetStart, presetEnd)
+    .replace("const extraQuestionPresets = ", "")
+    .trim()
+    .replace(/;$/, "");
+  const presets = vm.runInNewContext("(" + presetExpression + ")");
+  assert.ok(Object.keys(presets).length >= 6, "several starter ideas are available");
+  assert.ok(Object.values(presets).every(preset => preset.label && preset.question && preset.message),
+    "each starter supplies a label, question and message");
+
+  const applyFn = extractFunction(portal, "applyExtraQuestionPreset");
+  const applyPreset = vm.runInNewContext("(" + applyFn + ")");
+  const questionField = { value: "My old question" };
+  const messageField = { value: "My old message" };
+  assert.equal(applyPreset(presets, "favoriteMemory", questionField, messageField), true);
+  assert.equal(questionField.value, presets.favoriteMemory.question);
+  assert.equal(messageField.value, presets.favoriteMemory.message);
+
+  questionField.value += " (edited)";
+  messageField.value = "My own words";
+  assert.equal(questionField.value.endsWith("(edited)"), true);
+  assert.equal(messageField.value, "My own words");
+  assert.equal(applyPreset(presets, "does-not-exist", questionField, messageField), false);
+  assert.match(portal, /data-extra-preset/);
+  assert.match(portal, /select\.addEventListener\("change"/);
+  assert.match(portal, /Choose a question starter…/);
+  assert.match(portal, /Write my own \(blank\)/);
+  assert.match(portal, /question_pages:\s*\$\$\("\.p-extra-page-editor"\)/);
+});
