@@ -731,17 +731,17 @@
     });
   }
 
-  function initQuestionPages(root) {
+  function initQuestionPages(root, initialPage = 0) {
     const card = root && root.querySelector(".p-card");
     if (!card) return;
-    const pages = $$("[data-question-page]", card);
+    const pages = $("[data-question-page]", card);
     if (pages.length <= 1) return;
     const back = $(".p-page-back", card);
     const next = $(".p-page-next", card);
     const actions = $(".p-card-actions", card);
     let current = 0;
     function showPage(index) {
-      current = Math.max(0, Math.min(pages.length - 1, index));
+      current = Math.max(0, Math.min(pages.length - 1, Number(index) || 0));
       pages.forEach((page, i) => { page.hidden = i !== current; });
       if (back) back.disabled = current === 0;
       if (next) next.hidden = current === pages.length - 1;
@@ -753,7 +753,7 @@
     }
     if (back) back.addEventListener("click", () => showPage(current - 1));
     if (next) next.addEventListener("click", () => showPage(current + 1));
-    showPage(0);
+    showPage(initialPage);
   }
 
   async function initCreate() {
@@ -920,10 +920,14 @@
     function renderDraft() {
       const d = draft();
       const preview = $("#create-preview");
+      // Re-rendering the preview after each edit must not send the creator back to page one.
+      const existingPages = $("[data-question-page]", preview);
+      const visiblePageIndex = existingPages.findIndex(page => !page.hidden);
+      const currentPageIndex = visiblePageIndex < 0 ? 0 : visiblePageIndex;
       const photoGallery = selectedPhotos.map(photo => ({ url: photo.previewUrl, caption: photo.caption }));
       preview.innerHTML = cardMarkup({ ...d, photo_gallery: photoGallery, status: "published" });
       initRomanticScene(preview);
-      initQuestionPages(preview);
+      initQuestionPages(preview, currentPageIndex);
       initPhotoGallery(preview);
       $("#recipient-yes", preview).disabled = true;
       $("#recipient-no", preview).disabled = true;
