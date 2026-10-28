@@ -23,6 +23,23 @@
     justbecause: { question: "Can I make your day a little more special?", message: "No big occasion needed. I just wanted to remind you that you matter to me and you make life a little brighter. 💗", yes: "Of course! ♥", theme: "playful" },
     custom: { question: "", message: "", yes: "Yes, absolutely! ♥", theme: "sweet" }
   };
+  const extraQuestionPresets = {
+    gettingToKnow: { label: "Getting to know you", question: "What is one little thing that always makes you smile?", message: "I would love to know the small things that make your world brighter. ♡" },
+    favoriteMemory: { label: "Favorite memory", question: "What is a memory with me that you would love to relive?", message: "Let's take a little trip back to a moment that made us smile. ✨" },
+    dreamDate: { label: "Dream date", question: "What would your perfect day together look like?", message: "No big plans needed — just a little daydream about time together. 🌷" },
+    futureAdventure: { label: "A future adventure", question: "What is one place you would love for us to explore together?", message: "We can start with a dream and turn it into a memory someday. 🌙" },
+    littleConfession: { label: "A little confession", question: "What is something you have always wanted to tell me?", message: "A little honesty can make a moment feel even closer. 💌" },
+    appreciation: { label: "What you appreciate", question: "What is something about us that makes you smile?", message: "I would love to hear it in your own words. ♡" },
+    funQuestion: { label: "A fun what-if", question: "If we could teleport anywhere for one day, where would we go?", message: "No limits, no planning — just choose our next little adventure. ✦" },
+    moreMoments: { label: "More moments together", question: "What is one thing you would love for us to do more often?", message: "Sometimes the smallest moments mean the most. ♥" }
+  };
+  function applyExtraQuestionPreset(presets, presetKey, questionField, messageField) {
+    const preset = presets && presets[presetKey];
+    if (!preset || !questionField || !messageField) return false;
+    questionField.value = preset.question;
+    messageField.value = preset.message;
+    return true;
+  }
   const demoKey = "wybm-demo-proposals-v1";
   const demoResponseKey = "wybm-demo-responses-v1";
   const query = new URLSearchParams(location.search);
@@ -798,13 +815,39 @@
     function renderExtraPageEditors() {
       if (!pageCount || !pageEditor) return;
       const count = Math.max(0, Math.min(3, Number(pageCount.value) || 0));
-      const previous = $$(".p-extra-page-editor", pageEditor).map(el => ({ question: $("[data-extra-question]", el).value, message: $("[data-extra-message]", el).value }));
+      const previous = $(".p-extra-page-editor", pageEditor).map(el => ({
+        question: $("[data-extra-question]", el).value,
+        message: $("[data-extra-message]", el).value,
+        preset: $("[data-extra-preset]", el)?.value || ""
+      }));
       const pageOffset = selectedPhotos.length ? 1 : 0;
       pageEditor.innerHTML = Array.from({ length: count }, (_, index) => {
         const item = previous[index] || {};
-        return '<div class="p-extra-page-editor"><h3>Extra question page ' + (index + 2 + pageOffset) + '</h3><div class="p-field"><label>Question</label><input data-extra-question maxlength="180" placeholder="What else would you like to ask?" value="' + escapeText(item.question || "") + '"></div><div class="p-field"><label>Message (optional)</label><textarea data-extra-message maxlength="500" rows="2" placeholder="Add a little context…">' + escapeText(item.message || "") + '</textarea></div></div>';
+        const pageNumber = index + 2 + pageOffset;
+        const presetOptions = Object.entries(extraQuestionPresets).map(([key, preset]) =>
+          '<option value="' + key + '"' + (item.preset === key ? ' selected' : '') + '>' + escapeText(preset.label) + '</option>'
+        ).join("");
+        return '<div class="p-extra-page-editor"><h3>Extra question page ' + pageNumber + '</h3>' +
+          '<div class="p-field p-extra-preset-field"><label>Start with a pre-made idea (optional)</label><select data-extra-preset aria-label="Pre-made starter for extra question page ' + pageNumber + '">' +
+          '<option value="">Choose a question starter…</option><option value="custom"' + (item.preset === "custom" ? ' selected' : '') + '>Write my own (blank)</option>' + presetOptions +
+          '</select><small>Choose a starter, then edit the question and message below to make it yours.</small></div>' +
+          '<div class="p-field"><label>Question</label><input data-extra-question maxlength="180" placeholder="What else would you like to ask?" value="' + escapeText(item.question || "") + '"></div>' +
+          '<div class="p-field"><label>Message (optional)</label><textarea data-extra-message maxlength="500" rows="2" placeholder="Add a little context…">' + escapeText(item.message || "") + '</textarea></div></div>';
       }).join("");
       pageEditor.querySelectorAll("input,textarea").forEach(el => el.addEventListener("input", renderDraft));
+      $("[data-extra-preset]", pageEditor).forEach(select => select.addEventListener("change", () => {
+        const editor = select.closest(".p-extra-page-editor");
+        const questionField = $("[data-extra-question]", editor);
+        const messageField = $("[data-extra-message]", editor);
+        if (select.value === "custom") {
+          questionField.value = "";
+          messageField.value = "";
+        } else if (select.value) {
+          applyExtraQuestionPreset(extraQuestionPresets, select.value, questionField, messageField);
+        }
+        renderDraft();
+        if (select.value && select.value !== "custom") questionField.focus();
+      }));
       renderDraft();
     }
     pageCount?.addEventListener("change", renderExtraPageEditors);
