@@ -178,3 +178,17 @@ test("Achvex Ltd website and Instagram links are visible across main pages", () 
     assert.match(content, /Achvex Ltd|ACHVEX LTD/);
   }
 });
+
+test("privacy notice is available and linked from every public page footer", () => {
+  const privacyPath = path.join(root, "privacy.html");
+  assert.ok(fs.existsSync(privacyPath), "missing privacy notice");
+  const privacy = fs.readFileSync(privacyPath, "utf8");
+  for (const topic of ["Information the service handles", "What other people can see", "Supabase", "15-day window", "privacy request"]) {
+    assert.ok(privacy.toLowerCase().includes(topic.toLowerCase()), `privacy notice should cover ${topic}`);
+  }
+  for (const file of ["index.html", "create.html", "proposal.html", "dashboard.html", "inbox.html", "login.html"]) {
+    const source = fs.readFileSync(path.join(root, file), "utf8");
+    assert.match(source, /href="privacy\.html"/, `missing privacy link in ${file}`);
+  }
+});
+

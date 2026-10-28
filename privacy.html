@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#fff8f7">
+  <meta name="description" content="How WillYouBeMine handles proposal details, photos, account information and responses.">
+  <title>Privacy notice — WillYouBeMine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="portal.css">
+</head>
+<body class="portal">
+  <div class="p-top">YOUR DATA, YOUR CHOICES <span class="p-top-credit">· BY ACHVEX LTD</span></div>
+  <header class="p-nav">
+    <a class="p-brand" href="index.html"><span class="p-brand-mark">♥</span><span>WillYouBeMine<span class="p-brand-dot">.</span></span></a>
+    <nav class="p-links"><a href="index.html">Home</a><a href="create.html">Create</a><a href="login.html">Your account</a></nav>
+    <a class="p-button ghost" href="index.html">Back to home</a>
+  </header>
+  <main class="p-main">
+    <div class="p-page-head">
+      <div>
+        <div class="p-eyebrow">A PLAIN-LANGUAGE PRIVACY NOTICE</div>
+        <h1 class="p-title">Your privacy <em>matters.</em></h1>
+        <p class="p-subtitle">Last updated: October 28, 2026. This page explains what the service handles and how proposal links and replies work.</p>
+      </div>
+    </div>
+    <section class="p-panel" style="margin-bottom:16px">
+      <h2 style="font:500 26px var(--p-serif);margin:0 0 12px">Information the service handles</h2>
+      <p>When you use an account-based feature, the service handles the email address and authentication session needed to sign in. When you create a proposal, it stores the names you enter, question and message text, theme and appearance choices, extra question pages, and any photos and captions you choose to upload. When someone answers, it stores their Yes/No answer, optional note, and the proposal and time associated with that reply.</p>
+      <p>The standalone builder on the home page creates a downloadable proposal in your browser. That downloaded file stays with you unless you choose to share it. Account-based publishing, dashboards, replies and photo storage use the online services described below.</p>
+    </section>
+    <section class="p-panel" style="margin-bottom:16px">
+      <h2 style="font:500 26px var(--p-serif);margin:0 0 12px">What other people can see</h2>
+      <p>A published proposal is designed to be opened by its unique link. Anyone who obtains that link can view the proposal's displayed names, question, message, and any photos included in it while the link is active. Share it only with the intended recipient and avoid including information you would not want that person to see.</p>
+      <p>Proposal access is limited to a 15-day window by the database rules. The project includes a scheduled cleanup job for expired proposals; actual deletion of expired records depends on that job remaining enabled and operational in Supabase.</p>
+      <p>Replies are shown in the authenticated creator's dashboard and inbox. Public visitors are not granted direct read access to the proposal or response tables. Photos are kept in a private storage bucket and served through short-lived signed links when an active proposal is opened.</p>
+    </section>
+    <section class="p-panel" style="margin-bottom:16px">
+      <h2 style="font:500 26px var(--p-serif);margin:0 0 12px">How information is used</h2>
+      <p>Information is used to publish the proposal you create, display it to people who have its link, accept and show replies to its creator, operate the account dashboard, and maintain the service. The application uses account-scoped database policies and private photo storage to restrict access through the normal app interface.</p>
+      <p>You can delete a proposal from your dashboard. The service also attempts to remove its stored photos; the related database responses are deleted when the proposal record is deleted. The app does not currently offer a self-service account deletion control.</p>
+    </section>
+    <section class="p-panel" style="margin-bottom:16px">
+      <h2 style="font:500 26px var(--p-serif);margin:0 0 12px">Service providers and browser storage</h2>
+      <p><strong>Supabase</strong> provides account authentication, database and photo storage. <strong>Vercel</strong> serves the website. <strong>Google Fonts</strong> provides typography and <strong>jsDelivr</strong> serves the Supabase browser library. These providers may process technical request information as part of delivering their services; review their own privacy information for details.</p>
+      <p>The sign-in session is maintained using browser storage by the Supabase client. In local preview mode, draft proposals and replies can also be stored in that browser only. Clearing browser storage may remove local preview data or sign you out.</p>
+    </section>
+    <section class="p-panel">
+      <h2 style="font:500 26px var(--p-serif);margin:0 0 12px">Your choices and privacy requests</h2>
+      <p>Use a unique share link only for its intended audience, keep your account credentials private, and avoid submitting highly sensitive information. If you need help with a privacy request or want to ask about account-level deletion, contact Achvex through its <a class="p-inline-link" href="https://achvex-website.vercel.app/" target="_blank" rel="noopener noreferrer">website</a> or <a class="p-inline-link" href="https://www.instagram.com/achvexcodes/" target="_blank" rel="noopener noreferrer">Instagram</a>. Do not send passwords or authentication codes in a message.</p>
+      <p>This notice describes the service's current behavior in plain language; it is not a substitute for reviewing applicable legal requirements before a commercial launch. Security controls reduce risk but cannot guarantee absolute security.</p>
+    </section>
+  </main>
+  <footer class="p-footer">
+    <a class="p-brand" href="index.html"><span class="p-brand-mark">♥</span>WillYouBeMine<span class="p-brand-dot">.</span></a>
+    <span>Share a little moment with care.</span>
+    <a href="privacy.html">Privacy</a>
+    <span class="achvex-footer-links"><strong>Achvex Ltd</strong><span>·</span><a href="https://achvex-website.vercel.app/" target="_blank" rel="noopener noreferrer">Website ↗</a><span>·</span><a href="https://www.instagram.com/achvexcodes/" target="_blank" rel="noopener noreferrer">Instagram ↗</a></span>
+  </footer>
+</body>
+</html>
